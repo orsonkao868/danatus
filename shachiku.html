@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社畜列傳</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Microsoft JhengHei',sans-serif}
+body{background:#0d1117;color:#e6edf3;min-height:100vh;padding:1rem}
+.game-title{text-align:center;font-size:28px;font-weight:bold;color:#58a6ff;margin-bottom:4px;letter-spacing:4px}
+.game-sub{text-align:center;font-size:13px;color:#8b949e;margin-bottom:1.5rem}
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:1rem 1.25rem;margin-bottom:12px}
+.card-title{font-size:16px;font-weight:bold;color:#58a6ff;margin-bottom:8px}
+.btn{padding:8px 16px;font-size:13px;border-radius:8px;border:none;cursor:pointer;margin:3px;font-weight:bold;transition:all 0.2s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.btn-blue{background:#1f6feb;color:white}
+.btn-blue:hover{background:#388bfd}
+.btn-red{background:#da3633;color:white}
+.btn-red:hover{background:#f85149}
+.btn-green{background:#238636;color:white}
+.btn-green:hover{background:#2ea043}
+.btn-purple{background:#6e40c9;color:white}
+.btn-purple:hover{background:#8957e5}
+.btn-gray{background:#21262d;color:#c9d1d9;border:1px solid #30363d}
+.btn-gray:hover{background:#30363d}
+.btn-gold{background:#9e6a03;color:white}
+.btn-gold:hover{background:#d29922}
+.btn-secret{background:#2d1b69;color:#d2a8ff;border:1px solid #8957e5}
+.job-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.job-card{background:#0d1117;border:2px solid #30363d;border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s;text-align:center}
+.job-card:hover{border-color:#58a6ff;transform:translateY(-2px)}
+.job-card.selected{border-color:#58a6ff;background:#161b22}
+.job-card.secret{border-color:#8957e5}
+.job-icon{font-size:32px;margin-bottom:6px}
+.job-name{font-size:14px;font-weight:bold;color:#e6edf3;margin-bottom:3px}
+.job-type{font-size:11px;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:6px}
+.type-atk{background:#3d1a1a;color:#f85149}
+.type-ctrl{background:#1a2d3d;color:#58a6ff}
+.type-sup{background:#1a3d1a;color:#2ea043}
+.type-all{background:#2d1b69;color:#d2a8ff}
+.type-god{background:#3d2a00;color:#d29922}
+.job-desc{font-size:11px;color:#8b949e;line-height:1.5}
+.team-slots{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.team-slot{flex:1;min-width:120px;background:#0d1117;border:2px dashed #30363d;border-radius:10px;padding:10px;text-align:center;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.team-slot.filled{border-style:solid;border-color:#238636}
+.slot-icon{font-size:24px;margin-bottom:4px}
+.slot-name{font-size:12px;font-weight:bold;color:#e6edf3}
+.slot-uses{font-size:11px;color:#8b949e}
+.slot-lv{font-size:11px;color:#58a6ff}
+.battle-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.stage-info{font-size:13px;color:#8b949e}
+.team-status{display:flex;gap:8px;flex-wrap:wrap}
+.member-status{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;transition:all 0.2s}
+.member-status:hover{border-color:#58a6ff}
+.member-status.active{border-color:#2ea043;background:#0d2d1a}
+.member-status.depleted{opacity:0.4;cursor:not-allowed}
+.battle-arena{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:12px}
+.fighter-box{background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px;text-align:center;position:relative;min-height:140px}
+.fighter-box.player-box{border-color:#238636}
+.fighter-box.enemy-box{border-color:#da3633}
+.fighter-icon{font-size:36px;margin-bottom:6px}
+.fighter-name{font-size:15px;font-weight:bold;margin-bottom:2px}
+.fighter-title{font-size:11px;color:#8b949e;margin-bottom:6px}
+.hp-wrap{background:#21262d;border-radius:4px;height:8px;margin:4px 0}
+.hp-fill{height:8px;border-radius:4px;transition:width 0.4s}
+.hp-green{background:#238636}
+.hp-red{background:#da3633}
+.hp-text{font-size:11px;color:#8b949e;margin-top:2px}
+.vs-text{font-size:24px;font-weight:bold;color:#d29922;text-align:center}
+.status-row{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:4px}
+.status-tag{font-size:10px;padding:1px 6px;border-radius:3px}
+.st-burn{background:#3d1a00;color:#f0883e}
+.st-freeze{background:#0d2d3d;color:#79c0ff}
+.st-para{background:#2d2a00;color:#e3b341}
+.st-fear{background:#2d1a2d;color:#bc8cff}
+.st-conf{background:#3d1a1a;color:#ffa198}
+.st-tired{background:#21262d;color:#8b949e}
+.st-shield{background:#0d2d1a;color:#56d364}
+.st-boost{background:#1a2d00;color:#7ee787}
+.st-weak{background:#3d1a00;color:#ffa657}
+.damage-float{position:absolute;font-size:22px;font-weight:bold;pointer-events:none;animation:floatUp 1.2s ease-out forwards;z-index:100}
+.damage-float.dmg{color:#f85149}
+.damage-float.heal{color:#56d364}
+.damage-float.ctrl{color:#79c0ff}
+.damage-float.crit{color:#ffd700;font-size:28px}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:1;transform:translateY(-30px) scale(1.2)}100%{opacity:0;transform:translateY(-60px) scale(0.8)}}
+.skill-area{margin-bottom:10px}
+.skill-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.skill-btn{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:8px 10px;text-align:left;cursor:pointer;transition:all 0.2s;color:#e6edf3}
+.skill-btn:hover:not(:disabled){border-color:#58a6ff;background:#161b22}
+.skill-btn:disabled{opacity:0.4;cursor:not-allowed}
+.skill-name{font-size:13px;font-weight:bold;color:#e6edf3}
+.skill-type-tag{font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px}
+.skill-desc{font-size:11px;color:#8b949e;margin-top:3px}
+.skill-cd{font-size:10px;color:#d29922;margin-top:2px}
+.battle-log{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px;height:120px;overflow-y:auto;margin-bottom:10px}
+.log-line{font-size:13px;padding:2px 0;line-height:1.6;border-bottom:1px solid #21262d}
+.log-line:last-child{border-bottom:none;color:#e6edf3;font-weight:bold}
+.log-dmg{color:#f85149}
+.log-heal{color:#56d364}
+.log-ctrl{color:#79c0ff}
+.log-special{color:#d29922}
+.log-sys{color:#8b949e;font-style:italic}
+.progress-wrap{background:#21262d;border-radius:4px;height:6px;margin:4px 0}
+.progress-fill{height:6px;border-radius:4px;transition:width 0.5s}
+.xp-fill{background:#8957e5}
+.stage-fill{background:#d29922}
+.result-box{text-align:center;padding:20px;border-radius:12px;margin-bottom:12px}
+.result-title{font-size:28px;font-weight:bold;margin-bottom:8px}
+.result-sub{font-size:14px;line-height:1.8}
+.secret-input{background:#0d1117;border:1px solid #8957e5;border-radius:8px;padding:8px 12px;color:#d2a8ff;font-size:14px;width:100%;margin-bottom:8px;text-align:center;letter-spacing:4px}
+.secret-input:focus{outline:none;border-color:#d2a8ff}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<div class="game-title">社 畜 列 傳</div>
+<div class="game-sub">當社畜遇上奇葩怪物，誰才是真正的怪物？</div>
+
+<div id="screen-menu">
+  <div class="card">
+    <div class="card-title">開始冒險</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-blue" onclick="showScreen('screen-job-select')" style="padding:12px;font-size:15px">選擇職業 → 出發</button>
+      <button class="btn btn-gray" onclick="showSecretInput()" style="font-size:12px">？？？</button>
+    </div>
+  </div>
+  <div class="card" id="secret-panel" style="display:none">
+    <div class="card-title" style="color:#8957e5">隱藏解鎖</div>
+    <input class="secret-input" id="secret-code" type="password" placeholder="輸入密碼" maxlength="10">
+    <button class="btn btn-secret" onclick="checkSecret()">確認</button>
+    <div id="secret-msg" style="font-size:12px;margin-top:6px;color:#8b949e"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">遊戲說明</div>
+    <div style="font-size:13px;color:#8b949e;line-height:1.8">
+      · 選擇三位社畜組成隊伍<br>
+      · 每位社畜最多出場 <span style="color:#d29922">7次</span><br>
+      · 每個大關卡共 <span style="color:#d29922">5場小戰 + 1場Boss</span><br>
+      · 打敗怪物獲得經驗值，升等後進化解鎖新技能<br>
+      · 大關卡通關後重新選人，次數重置<br>
+      · 善用職業特性，找出怪物弱點！
+    </div>
+  </div>
+</div>
+
+<div id="screen-job-select" class="hidden">
+  <div class="card">
+    <div class="card-title">選擇你的主職業</div>
+    <div class="job-grid" id="job-grid"></div>
+    <button class="btn btn-green" onclick="confirmJob()">確認 →</button>
+    <button class="btn btn-gray" onclick="showScreen('screen-menu')">返回</button>
+  </div>
+</div>
+
+<div id="screen-team-select" class="hidden">
+  <div class="card">
+    <div class="card-title">組建隊伍（選1到3人）</div>
+    <div class="team-slots">
+      <div class="team-slot" id="slot-0"><div style="font-size:24px;color:#30363d">+</div><div style="font-size:12px;color:#8b949e">空位</div></div>
+      <div class="team-slot" id="slot-1"><div style="font-size:24px;color:#30363d">+</div><div style="font-size:12px;color:#8b949e">空位</div></div>
+      <div class="team-slot" id="slot-2"><div style="font-size:24px;color:#30363d">+</div><div style="font-size:12px;color:#8b949e">空位</div></div>
+    </div>
+    <div class="card-title" style="margin-top:8px">點擊選擇隊員</div>
+    <div class="job-grid" id="roster-grid"></div>
+    <button class="btn btn-green" id="start-battle-btn" onclick="startChapter()" disabled>出發！</button>
+    <button class="btn btn-gray" onclick="showScreen('screen-menu')">返回</button>
+  </div>
+</div>
+
+<div id="screen-battle" class="hidden">
+  <div class="card">
+    <div class="battle-header">
+      <div>
+        <div class="stage-info" id="stage-info">第1章 · 第1場</div>
+        <div class="progress-wrap" style="width:200px"><div class="progress-fill stage-fill" id="stage-progress" style="width:0%"></div></div>
+      </div>
+      <div class="team-status" id="team-status"></div>
+    </div>
+    <div class="battle-arena">
+      <div class="fighter-box player-box" id="player-box">
+        <div class="fighter-icon" id="p-icon"></div>
+        <div class="fighter-name" id="p-name"></div>
+        <div class="fighter-title" id="p-title"></div>
+        <div class="hp-wrap"><div class="hp-fill hp-green" id="p-hp-bar" style="width:100%"></div></div>
+        <div class="hp-text" id="p-hp-text"></div>
+        <div class="status-row" id="p-status"></div>
+      </div>
+      <div class="vs-text">VS</div>
+      <div class="fighter-box enemy-box" id="enemy-box">
+        <div class="fighter-icon" id="e-icon"></div>
+        <div class="fighter-name" id="e-name"></div>
+        <div class="fighter-title" id="e-title"></div>
+        <div class="hp-wrap"><div class="hp-fill hp-red" id="e-hp-bar" style="width:100%"></div></div>
+        <div class="hp-text" id="e-hp-text"></div>
+        <div class="status-row" id="e-status"></div>
+      </div>
+    </div>
+    <div class="skill-area">
+      <div style="font-size:13px;color:#8b949e;margin-bottom:6px">選擇技能：</div>
+      <div class="skill-grid" id="skill-grid"></div>
+    </div>
+    <div class="battle-log" id="battle-log"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-blue" id="atk-btn" onclick="doBasicAttack()">普通攻擊</button>
+      <button class="btn btn-gray" id="switch-btn" onclick="openSwitchPanel()">換人</button>
+      <button class="btn btn-red" id="run-btn" onclick="doRun()">逃跑</button>
+    </div>
+  </div>
+  <div class="card hidden" id="switch-panel">
+    <div class="card-title">選擇換上場的隊友</div>
+    <div id="switch-roster"></div>
+    <button class="btn btn-gray" onclick="closeSwitchPanel()">取消</button>
+  </div>
+</div>
+
+<div id="screen-result" class="hidden">
+  <div class="card">
+    <div class="result-box" id="result-box">
+      <div class="result-title" id="result-title"></div>
+      <div class="result-sub" id="result-sub"></div>
+    </div>
+    <div style="text-align:center" id="result-btns"></div>
+  </div>
+</div>
+<script>
+const JOBS = {
+  engineer:{name:'工程師',icon:'👨‍💻',type:'atk',typeLabel:'攻擊型',desc:'高智力低體力，技術流打法',unlocked:true,
+    evolutions:['工程師','資深工程師','架構師','CTO'],
+    stats:[{hp:80,atk:25,def:8,spd:18},{hp:95,atk:32,def:10,spd:20},{hp:110,atk:40,def:12,spd:22},{hp:130,atk:52,def:15,spd:25}],
+    skills:[
+      {name:'Debug攻擊',type:'atk',desc:'找出怪物漏洞，造成高傷害',power:1.8,cd:0,unlockLv:1},
+      {name:'喝咖啡',type:'sup',desc:'回復20HP，攻擊+30%持續1回合',power:0,cd:3,unlockLv:10},
+      {name:'部署程式',type:'atk',desc:'造成1.5倍傷害並使敵方混亂',power:1.5,cd:3,unlockLv:20,effect:'conf'},
+      {name:'丟鍋給PM',type:'ctrl',desc:'讓怪物困惑，跳過下一回合',power:0,cd:4,unlockLv:30,effect:'skip'},
+      {name:'系統崩潰',type:'atk',desc:'終極技能，造成3倍傷害',power:3.0,cd:5,unlockLv:30}
+    ]},
+  teacher:{name:'老師',icon:'👩‍🏫',type:'ctrl',typeLabel:'控制型',desc:'控場高手，讓怪物動彈不得',unlocked:true,
+    evolutions:['老師','組長','主任','校長'],
+    stats:[{hp:90,atk:18,def:12,spd:15},{hp:108,atk:22,def:15,spd:17},{hp:128,atk:28,def:19,spd:19},{hp:150,atk:35,def:24,spd:22}],
+    skills:[
+      {name:'點名施壓',type:'ctrl',desc:'讓怪物恐懼，攻擊-30%持續2回合',power:0.5,cd:0,unlockLv:1,effect:'fear'},
+      {name:'出考卷',type:'ctrl',desc:'怪物陷入思考，跳過下一回合',power:0,cd:3,unlockLv:10,effect:'skip'},
+      {name:'批改作業',type:'sup',desc:'回復30HP並解除一個負面狀態',power:0,cd:3,unlockLv:20},
+      {name:'家長連絡',type:'special',desc:'使怪物攻擊降50%持續3回合',power:0,cd:5,unlockLv:30,effect:'fear2'},
+      {name:'當場死亡',type:'atk',desc:'用成績單造成2.5倍傷害',power:2.5,cd:4,unlockLv:30}
+    ]},
+  sales:{name:'業務',icon:'🤝',type:'ctrl',typeLabel:'詐術型',desc:'話術高手，迷惑敵人取勝',unlocked:true,
+    evolutions:['業務','資深業務','業務經理','總監'],
+    stats:[{hp:85,atk:20,def:10,spd:22},{hp:100,atk:25,def:12,spd:26},{hp:118,atk:31,def:15,spd:30},{hp:140,atk:40,def:18,spd:35}],
+    skills:[
+      {name:'話術迷惑',type:'ctrl',desc:'讓怪物混亂，有50%機率攻擊自己',power:0,cd:0,unlockLv:1,effect:'conf'},
+      {name:'衝業績',type:'atk',desc:'爆發攻擊，造成2倍傷害',power:2.0,cd:3,unlockLv:10},
+      {name:'送禮賄賂',type:'ctrl',desc:'怪物停止攻擊1回合，自身回復15HP',power:0,cd:4,unlockLv:20,effect:'skip'},
+      {name:'簽合約',type:'ctrl',desc:'鎖死怪物行動2回合',power:0,cd:5,unlockLv:30,effect:'freeze'},
+      {name:'收買敵人',type:'special',desc:'使怪物攻擊力永久降低40%',power:0,cd:6,unlockLv:30,effect:'weaken'}
+    ]},
+  nurse:{name:'護理師',icon:'👩‍⚕️',type:'sup',typeLabel:'補師型',desc:'最強回血，支撐隊伍的核心',unlocked:true,
+    evolutions:['護理師','資深護理師','護理長','院長'],
+    stats:[{hp:120,atk:15,def:18,spd:13},{hp:145,atk:19,def:22,spd:15},{hp:172,atk:24,def:27,spd:17},{hp:205,atk:30,def:33,spd:20}],
+    skills:[
+      {name:'打針',type:'atk',desc:'精準攻擊，造成1.5倍傷害',power:1.5,cd:0,unlockLv:1},
+      {name:'包紮治療',type:'sup',desc:'回復40HP',power:0,cd:2,unlockLv:10},
+      {name:'值大夜班',type:'sup',desc:'獲得護盾30點',power:0,cd:4,unlockLv:20,effect:'shield'},
+      {name:'強心針',type:'sup',desc:'回復60HP，攻擊+50%持續2回合',power:0,cd:5,unlockLv:30,effect:'boost'},
+      {name:'急救術',type:'sup',desc:'回復80HP並解除所有負面狀態',power:0,cd:6,unlockLv:30}
+    ]},
+  officer:{name:'官員',icon:'🏛️',type:'ctrl',typeLabel:'文件型',desc:'公文轟炸，讓怪物無法動彈',unlocked:true,
+    evolutions:['官員','科長','局長','部長'],
+    stats:[{hp:95,atk:20,def:15,spd:14},{hp:113,atk:25,def:19,spd:16},{hp:133,atk:31,def:24,spd:18},{hp:158,atk:39,def:30,spd:21}],
+    skills:[
+      {name:'開罰單',type:'ctrl',desc:'讓怪物速度降低50%持續2回合',power:0.5,cd:0,unlockLv:1,effect:'tired'},
+      {name:'公文轟炸',type:'atk',desc:'造成1.8倍傷害',power:1.8,cd:3,unlockLv:10},
+      {name:'蓋章認證',type:'sup',desc:'攻擊力+40%持續3回合',power:0,cd:4,unlockLv:20,effect:'boost'},
+      {name:'緊急命令',type:'ctrl',desc:'讓怪物完全停止行動2回合',power:0,cd:5,unlockLv:30,effect:'freeze'},
+      {name:'立法禁止',type:'special',desc:'永久降低怪物攻擊力50%',power:0,cd:6,unlockLv:30,effect:'weaken'}
+    ]},
+  police:{name:'警察',icon:'👮',type:'atk',typeLabel:'壓制型',desc:'高攻高血，正面硬撼怪物',unlocked:true,
+    evolutions:['警察','刑警','督察','警察局長'],
+    stats:[{hp:110,atk:23,def:16,spd:12},{hp:132,atk:29,def:20,spd:14},{hp:156,atk:36,def:25,spd:16},{hp:185,atk:45,def:31,spd:19}],
+    skills:[
+      {name:'舉牌警告',type:'ctrl',desc:'讓怪物停止行動1回合',power:0,cd:0,unlockLv:1,effect:'skip'},
+      {name:'逮捕',type:'atk',desc:'造成2倍傷害並使敵方恐懼',power:2.0,cd:3,unlockLv:10,effect:'fear'},
+      {name:'叫增援',type:'sup',desc:'獲得護盾25點，攻擊+30%',power:0,cd:4,unlockLv:20,effect:'shield'},
+      {name:'強制拘留',type:'ctrl',desc:'讓怪物無法行動3回合',power:0,cd:6,unlockLv:30,effect:'freeze'},
+      {name:'正義制裁',type:'atk',desc:'終極技能，造成3.5倍傷害',power:3.5,cd:5,unlockLv:30}
+    ]},
+  waiter:{name:'服務生',icon:'🍽️',type:'sup',typeLabel:'輔助型',desc:'全隊支援，笑臉迎人化解危機',unlocked:true,
+    evolutions:['服務生','領班','餐廳經理','米其林主廚'],
+    stats:[{hp:95,atk:17,def:13,spd:20},{hp:113,atk:21,def:16,spd:23},{hp:133,atk:26,def:20,spd:27},{hp:158,atk:33,def:25,spd:32}],
+    skills:[
+      {name:'微笑服務',type:'ctrl',desc:'平息怪物，攻擊-35%持續2回合',power:0,cd:0,unlockLv:1,effect:'fear'},
+      {name:'上菜攻擊',type:'atk',desc:'用托盤攻擊，造成1.6倍傷害',power:1.6,cd:2,unlockLv:10},
+      {name:'推薦菜單',type:'ctrl',desc:'讓怪物分心，跳過下一回合',power:0,cd:3,unlockLv:20,effect:'skip'},
+      {name:'道歉平息',type:'sup',desc:'回復35HP並解除所有負面狀態',power:0,cd:4,unlockLv:30},
+      {name:'米其林料理',type:'atk',desc:'造成2.5倍傷害，回復自身30HP',power:2.5,cd:5,unlockLv:30}
+    ]},
+  clerk:{name:'便利商店店員',icon:'🏪',type:'all',typeLabel:'全能型',desc:'什麼都會，資深後解鎖全部技能',unlocked:true,
+    evolutions:['便利商店店員','資深店員'],
+    stats:[{hp:100,atk:20,def:14,spd:18},{hp:140,atk:28,def:20,spd:25}],
+    skills:[
+      {name:'加熱食物',type:'sup',desc:'回復25HP',power:0,cd:0,unlockLv:1},
+      {name:'掃條碼',type:'atk',desc:'造成1.8倍傷害',power:1.8,cd:2,unlockLv:10},
+      {name:'找零迷惑',type:'ctrl',desc:'讓怪物陷入混亂1回合',power:0,cd:3,unlockLv:10,effect:'conf'},
+      {name:'備貨補充',type:'sup',desc:'回復45HP並獲得護盾20點',power:0,cd:3,unlockLv:10,effect:'shield'},
+      {name:'24小時值班',type:'sup',desc:'攻擊和速度+40%持續3回合',power:0,cd:4,unlockLv:10,effect:'boost'},
+      {name:'處理所有事',type:'special',desc:'造成2.8倍傷害並使敵方混亂',power:2.8,cd:5,unlockLv:10,effect:'conf'}
+    ]},
+  designer:{name:'設計師',icon:'🎨',type:'god',typeLabel:'神級',desc:'改稿改到覺醒，秒天秒地無敵',unlocked:false,secret:true,
+    evolutions:['設計師'],
+    stats:[{hp:999,atk:999,def:999,spd:999}],
+    skills:[
+      {name:'改稿第999版',type:'god',desc:'直接秒殺目標',power:999,cd:0,unlockLv:1},
+      {name:'甲方已讀不回',type:'god',desc:'讓怪物陷入絕望，完全放棄抵抗',power:0,cd:0,unlockLv:1,effect:'freeze'},
+      {name:'趕deadline',type:'god',desc:'全場AOE，怪物直接消失',power:999,cd:0,unlockLv:1},
+      {name:'客戶說的對',type:'god',desc:'自身無敵一回合，反彈所有傷害',power:0,cd:0,unlockLv:1,effect:'shield'}
+    ]}
+};
+
+const ENEMIES=[
+  {name:'客訴魔人',icon:'😤',title:'永遠不滿意的存在',hp:80,atk:18,def:8,spd:15,weak:['sales','waiter']},
+  {name:'甩鍋上司',icon:'👔',title:'永遠是別人的錯',hp:100,atk:22,def:12,spd:12,weak:['engineer','officer']},
+  {name:'會議怪獸',icon:'📊',title:'會議製造機',hp:90,atk:15,def:15,spd:10,weak:['officer','teacher']},
+  {name:'永遠改規格的客戶',icon:'📝',title:'需求不斷變化的惡魔',hp:110,atk:20,def:10,spd:14,weak:['sales','officer']},
+  {name:'奧客',icon:'😡',title:'蠻不講理的存在',hp:85,atk:25,def:8,spd:16,weak:['waiter','nurse']},
+  {name:'遲交報告的同事',icon:'🦥',title:'拖延症晚期患者',hp:70,atk:12,def:10,spd:8,weak:['teacher','officer']},
+  {name:'酒駕司機',icon:'🚗',title:'馬路殺手',hp:95,atk:28,def:6,spd:20,weak:['police']},
+  {name:'違規攤販',icon:'🛒',title:'屢勸不聽的地頭蛇',hp:88,atk:16,def:14,spd:14,weak:['officer','police']},
+  {name:'deadline惡魔',icon:'⏰',title:'時間管理大師的剋星',hp:120,atk:30,def:15,spd:25,weak:['engineer','sales'],special:'grow'},
+  {name:'網路酸民',icon:'💻',title:'鍵盤俠本俠',hp:75,atk:20,def:5,spd:22,weak:['police','officer']},
+  {name:'腦霧主管',icon:'🧠',title:'完全不懂技術的主管',hp:100,atk:18,def:18,spd:10,weak:['engineer','teacher']},
+  {name:'超級奧客Boss',icon:'👿',title:'奧客終極形態',hp:300,atk:40,def:25,spd:20,weak:['waiter','nurse','sales'],isBoss:true}
+];
+
+const CHAPTERS=[
+  {name:'第一章：辦公室生存記',enemies:[0,1,2,3,4,5],bossIndex:11},
+  {name:'第二章：社會奇葩圖鑑',enemies:[6,7,8,9,10,5],bossIndex:11}
+];
+
+let gameState={
+  selectedJob:null,
+  unlockedJobs:new Set(),
+  team:[],
+  currentChapter:0,
+  currentFight:0,
+  activeIndex:0,
+  player:null,
+  enemy:null,
+  pHp:0,pMaxHp:0,
+  eHp:0,eMaxHp:0,
+  pStatus:[],eStatus:[],
+  pShield:0,pBoost:0,
+  eWeakened:false,
+  skillCooldowns:{},
+  busy:false
+};
+
+let playerRoster={};
+
+function initRoster(){
+  Object.keys(JOBS).forEach(key=>{
+    playerRoster[key]={jobKey:key,lv:1,xp:0,xpNeed:100,evoStage:0,uses:7};
+  });
+}
+
+function showScreen(id){
+  ['screen-menu','screen-job-select','screen-team-select','screen-battle','screen-result']
+    .forEach(s=>document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function showSecretInput(){
+  const p=document.getElementById('secret-panel');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+function checkSecret(){
+  const code=document.getElementById('secret-code').value;
+  const msg=document.getElementById('secret-msg');
+  if(code==='86888'){
+    JOBS.designer.unlocked=true;
+    gameState.unlockedJobs.add('designer');
+    msg.style.color='#d2a8ff';
+    msg.textContent='🎨 設計師解鎖！改稿改到覺醒，無人能擋！';
+  }else{
+    msg.style.color='#f85149';
+    msg.textContent='密碼錯誤，繼續當普通社畜吧。';
+  }
+}
+
+function buildJobGrid(){
+  const grid=document.getElementById('job-grid');
+  grid.innerHTML='';
+  Object.entries(JOBS).forEach(([key,job])=>{
+    if(!gameState.unlockedJobs.has(key)) return;
+    grid.innerHTML+=`
+      <div class="job-card ${job.secret?'secret':''}" onclick="selectJob('${key}')">
+        <div class="job-icon">${job.icon}</div>
+        <div class="job-name">${job.name}</div>
+        <div class="job-type type-${job.type}">${job.typeLabel}</div>
+        <div class="job-desc">${job.desc}</div>
+      </div>`;
+  });
+}
+
+function selectJob(key){
+  gameState.selectedJob=key;
+  document.querySelectorAll('#job-grid .job-card').forEach(c=>c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+}
+
+function confirmJob(){
+  if(!gameState.selectedJob){alert('請先選擇職業！');return;}
+  showScreen('screen-team-select');
+  buildRosterGrid();
+}
+
+function buildRosterGrid(){
+  const grid=document.getElementById('roster-grid');
+  grid.innerHTML='';
+  gameState.team=[];
+  Object.entries(JOBS).forEach(([key,job])=>{
+    if(!gameState.unlockedJobs.has(key)) return;
+    const roster=playerRoster[key];
+    const card=document.createElement('div');
+    card.className=`job-card ${job.secret?'secret':''}`;
+    card.id=`roster-${key}`;
+    card.innerHTML=`
+      <div class="job-icon">${job.icon}</div>
+      <div class="job-name">${job.evolutions[roster.evoStage]}</div>
+      <div class="job-type type-${job.type}">Lv.${roster.lv}</div>
+      <div class="job-desc">出場次數：${roster.uses}</div>`;
+    card.onclick=()=>toggleTeamMember(key);
+    grid.appendChild(card);
+  });
+  updateTeamSlots();
+}
+
+function toggleTeamMember(key){
+  const idx=gameState.team.indexOf(key);
+  if(idx!==-1){
+    gameState.team.splice(idx,1);
+  }else{
+    if(gameState.team.length>=3){
+      alert('最多只能選3人！');return;
+    }
+    gameState.team.push(key);
+  }
+  document.querySelectorAll('#roster-grid .job-card').forEach(c=>c.classList.remove('selected'));
+  gameState.team.forEach(k=>{
+    const card=document.getElementById(`roster-${k}`);
+    if(card) card.classList.add('selected');
+  });
+  updateTeamSlots();
+  document.getElementById('start-battle-btn').disabled=gameState.team.length<1;
+}
+
+function updateTeamSlots(){
+  for(let i=0;i<3;i++){
+    const slot=document.getElementById(`slot-${i}`);
+    if(gameState.team[i]){
+      const key=gameState.team[i];
+      const job=JOBS[key];
+      const roster=playerRoster[key];
+      slot.className='team-slot filled';
+      slot.innerHTML=`<div class="slot-icon">${job.icon}</div><div class="slot-name">${job.evolutions[roster.evoStage]}</div><div class="slot-lv">Lv.${roster.lv}</div><div class="slot-uses">出場：${roster.uses}次</div>`;
+    }else{
+      slot.className='team-slot';
+      slot.innerHTML=`<div style="font-size:24px;color:#30363d">+</div><div style="font-size:12px;color:#8b949e">空位</div>`;
+    }
+  }
+}
+
+function startChapter(){
+  gameState.currentFight=0;
+  gameState.team.forEach(key=>{if(key) playerRoster[key].uses=7;});
+  gameState.activeIndex=0;
+  showScreen('screen-battle');
+  loadFight();
+}
+
+function loadFight(){
+  const chapter=CHAPTERS[gameState.currentChapter];
+  const isLastFight=gameState.currentFight===5;
+  const enemyIdx=isLastFight?chapter.bossIndex:chapter.enemies[gameState.currentFight];
+  const base=ENEMIES[enemyIdx];
+  const scale=1+gameState.currentChapter*0.3+gameState.currentFight*0.1;
+  gameState.enemy={...base,hp:Math.round(base.hp*scale),atk:Math.round(base.atk*scale),def:Math.round(base.def*scale)};
+  gameState.eHp=gameState.enemy.hp;
+  gameState.eMaxHp=gameState.enemy.hp;
+  gameState.eStatus=[];
+  gameState.eWeakened=false;
+  loadPlayer(gameState.activeIndex);
+  updateStageInfo();
+  updateBattleUI();
+  buildSkillGrid();
+  updateTeamStatusBar();
+  clearLog();
+  addLog(`遭遇了【${gameState.enemy.name}】${gameState.enemy.isBoss?'⚠️BOSS':''}！`,'log-sys');
+  gameState.busy=false;
+  setBattleBtns(true);
+}
+
+function loadPlayer(idx){
+  const key=gameState.team[idx];
+  if(!key) return;
+  const job=JOBS[key];
+  const roster=playerRoster[key];
+  const stat=job.stats[roster.evoStage];
+  gameState.pMaxHp=stat.hp;
+  gameState.pHp=stat.hp;
+  gameState.pStatus=[];
+  gameState.pShield=0;
+  gameState.pBoost=0;
+  gameState.skillCooldowns={};
+  gameState.activeIndex=idx;
+}
+
+function buildSkillGrid(){
+  const grid=document.getElementById('skill-grid');
+  grid.innerHTML='';
+  const key=gameState.team[gameState.activeIndex];
+  const job=JOBS[key];
+  const roster=playerRoster[key];
+  const available=job.skills.filter(s=>s.unlockLv<=roster.lv);
+  const typeColors={atk:'#da3633',ctrl:'#1f6feb',sup:'#238636',special:'#9e6a03',god:'#6e40c9'};
+  const typeNames={atk:'傷害',ctrl:'控制',sup:'輔助',special:'特殊',god:'神技'};
+  available.forEach((skill,i)=>{
+    const cd=gameState.skillCooldowns[skill.name]||0;
+    grid.innerHTML+=`
+      <button class="skill-btn" onclick="useSkill(${i})" ${cd>0?'disabled':''}>
+        <span class="skill-name">${skill.name}</span>
+        <span class="skill-type-tag" style="background:${typeColors[skill.type]}22;color:${typeColors[skill.type]}">${typeNames[skill.type]}</span>
+        <div class="skill-desc">${skill.desc}</div>
+        ${cd>0?`<div class="skill-cd">冷卻：${cd}回合</div>`:''}
+      </button>`;
+  });
+}
+
+function doBasicAttack(){
+  if(gameState.busy) return;
+  gameState.busy=true;
+  setBattleBtns(false);
+  const key=gameState.team[gameState.activeIndex];
+  const job=JOBS[key];
+  const roster=playerRoster[key];
+  const stat=job.stats[roster.evoStage];
+  let atk=stat.atk*(1+gameState.pBoost*0.3);
+  let dmg=Math.round(atk*(0.9+Math.random()*0.2));
+  const def=gameState.eWeakened?Math.round(gameState.enemy.def*0.5):gameState.enemy.def;
+  dmg=Math.max(1,dmg-Math.round(def*0.5));
+  const weakBonus=gameState.enemy.weak&&gameState.enemy.weak.includes(key);
+  if(weakBonus){dmg=Math.round(dmg*1.5);addLog(`【弱點剋制！】普通攻擊造成 ${dmg} 傷害！`,'log-special');showDamageFloat('e',dmg,'crit');}
+  else{addLog(`普通攻擊造成 ${dmg} 傷害！`,'log-dmg');showDamageFloat('e',dmg,'dmg');}
+  gameState.eHp-=dmg;
+  updateBattleUI();
+  if(gameState.eHp<=0){setTimeout(()=>onEnemyDefeated(),800);return;}
+  setTimeout(()=>enemyTurn(),600);
+}
+
+function useSkill(idx){
+  if(gameState.busy) return;
+  gameState.busy=true;
+  setBattleBtns(false);
+  const key=gameState.team[gameState.activeIndex];
+  const job=JOBS[key];
+  const roster=playerRoster[key];
+  const stat=job.stats[roster.evoStage];
+  const available=job.skills.filter(s=>s.unlockLv<=roster.lv);
+  const skill=available[idx];
+  if(!skill){gameState.busy=false;setBattleBtns(true);return;}
+  if(skill.cd>0) gameState.skillCooldowns[skill.name]=skill.cd;
+  const logs=[];
+  let atk=stat.atk*(1+gameState.pBoost*0.3);
+  if(gameState.eWeakened) atk*=1.3;
+
+  if(key==='designer'){
+    if(skill.name==='改稿第999版'||skill.name==='趕deadline'){
+      gameState.eHp=0;logs.push(`設計師出手，${gameState.enemy.name} 直接消失！`);
+    }else if(skill.name==='甲方已讀不回'){
+      gameState.eStatus.push({type:'freeze',turns:99,label:'絕望',css:'st-freeze'});
+      logs.push(`${gameState.enemy.name} 陷入絕望！`);
+    }else if(skill.name==='客戶說的對'){
+      gameState.pShield+=999;logs.push(`設計師進入無敵狀態！`);
+    }
+    setLog(logs);updateBattleUI();
+    if(gameState.eHp<=0){setTimeout(()=>onEnemyDefeated(),800);return;}
+    setTimeout(()=>enemyTurn(),600);
+    return;
+  }
+
+  if(skill.power>0){
+    let dmg=Math.round(atk*skill.power*(0.9+Math.random()*0.2));
+    const def=gameState.eWeakened?Math.round(gameState.enemy.def*0.5):gameState.enemy.def;
+    dmg=Math.max(1,dmg-Math.round(def*0.5));
+    const weakBonus=gameState.enemy.weak&&gameState.enemy.weak.includes(key);
+    if(weakBonus){dmg=Math.round(dmg*1.5);logs.push(`【弱點剋制！】${skill.name} 造成 ${dmg} 傷害！`);showDamageFloat('e',dmg,'crit');}
+    else{logs.push(`${skill.name} 造成 ${dmg} 傷害！`);showDamageFloat('e',dmg,'dmg');}
+    gameState.eHp-=dmg;
+    if(skill.effect) applyEffect('enemy',skill.effect,logs);
+  }
+
+  if(skill.type==='sup'||skill.name==='批改作業'||skill.name==='道歉平息'||skill.name==='急救術'){
+    if(skill.name==='喝咖啡'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+20);gameState.pBoost=1;logs.push(`喝了咖啡！回復20HP，攻擊+30%！`);showDamageFloat('p',20,'heal');}
+    else if(skill.name==='包紮治療'){const h=40;gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+h);logs.push(`包紮治療！回復${h}HP！`);showDamageFloat('p',h,'heal');}
+    else if(skill.name==='加熱食物'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+25);logs.push(`加熱食物！回復25HP！`);showDamageFloat('p',25,'heal');}
+    else if(skill.name==='備貨補充'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+45);gameState.pShield+=20;logs.push(`備貨補充！回復45HP，護盾+20！`);}
+    else if(skill.name==='值大夜班'){gameState.pShield+=30;logs.push(`值大夜班！獲得30點護盾！`);}
+    else if(skill.name==='強心針'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+60);gameState.pBoost=2;logs.push(`強心針！回復60HP，攻擊大幅提升！`);showDamageFloat('p',60,'heal');}
+    else if(skill.name==='急救術'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+80);gameState.pStatus=[];logs.push(`急救術！回復80HP，所有負面狀態解除！`);showDamageFloat('p',80,'heal');}
+    else if(skill.name==='蓋章認證'){gameState.pBoost=3;logs.push(`蓋章認證！攻擊力大幅提升！`);}
+    else if(skill.name==='叫增援'){gameState.pShield+=25;gameState.pBoost=2;logs.push(`叫增援！護盾+25，攻擊提升！`);}
+    else if(skill.name==='24小時值班'){gameState.pBoost=3;logs.push(`24小時值班覺醒！全面強化！`);}
+    else if(skill.name==='批改作業'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+30);gameState.pStatus=gameState.pStatus.slice(1);logs.push(`批改作業！回復30HP！`);showDamageFloat('p',30,'heal');}
+    else if(skill.name==='道歉平息'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+35);gameState.pStatus=[];logs.push(`道歉平息！回復35HP，負面狀態解除！`);showDamageFloat('p',35,'heal');}
+    else if(skill.name==='米其林料理'){gameState.pHp=Math.min(gameState.pMaxHp,gameState.pHp+30);logs.push(`料理加持！額外回復30HP！`);}
+  }
+
+  if(skill.type==='ctrl'||skill.type==='special'){
+    if(skill.effect&&skill.power===0) applyEffect('enemy',skill.effect,logs);
+    if(skill.effect==='weaken') gameState.eWeakened=true;
+    if(skill.name==='家長連絡'){logs.push(`家長連絡！怪物極度恐慌！`);}
+  }
+
+  updateBattleUI();
+  setLog(logs);
+  if(gameState.eHp<=0){setTimeout(()=>onEnemyDefeated(),800);return;}
+  setTimeout(()=>enemyTurn(),600);
+}
+
+function applyEffect(target,effect,logs){
+  const isEnemy=target==='enemy';
+  const list=isEnemy?gameState.eStatus:gameState.pStatus;
+  const map={
+    burn:{label:'燃燒',turns:3,css:'st-burn'},
+    freeze:{label:'凍結',turns:2,css:'st-freeze'},
+    para:{label:'麻痺',turns:3,css:'st-para'},
+    fear:{label:'恐嚇',turns:2,css:'st-fear'},
+    fear2:{label:'極度恐嚇',turns:3,css:'st-fear'},
+    conf:{label:'混亂',turns:2,css:'st-conf'},
+    tired:{label:'疲勞',turns:2,css:'st-tired'},
+    skip:{label:'行動停止',turns:1,css:'st-freeze'},
+    shield:{label:'護盾',turns:3,css:'st-shield'},
+    boost:{label:'強化',turns:2,css:'st-boost'},
+    weaken:{label:'弱化',turns:99,css:'st-weak'}
+  };
+  const e=map[effect];
+  if(!e) return;
+  const filtered=list.filter(s=>s.type!==effect);
+  filtered.push({type:effect,turns:e.turns,label:e.label,css:e.css});
+  if(isEnemy) gameState.eStatus=filtered;
+  else gameState.pStatus=filtered;
+  const tName=isEnemy?gameState.enemy.name:'你';
+  logs.push(`${tName} 陷入【${e.label}】！`);
+}
+
+function enemyTurn(){
+  const logs=[];
+  let skipTurn=false;
+
+  gameState.eStatus=gameState.eStatus.map(s=>{
+    if((s.type==='skip'||s.type==='freeze')&&!skipTurn){skipTurn=true;logs.push(`${gameState.enemy.name} 被【${s.label}】控制，無法行動！`);}
+    if(s.type==='conf'&&Math.random()<0.5){skipTurn=true;const sd=10;gameState.eHp-=sd;logs.push(`${gameState.enemy.name} 混亂攻擊自己！受到${sd}傷害！`);}
+    return{...s,turns:s.turns-1};
+  }).filter(s=>s.turns>0);
+
+  gameState.pStatus=gameState.pStatus.map(s=>{
+    if(s.type==='burn'){const bd=8;gameState.pHp-=bd;logs.push(`燃燒傷害！受到${bd}點傷害！`);}
+    return{...s,turns:s.turns-1};
+  }).filter(s=>s.turns>0);
+
+  if(gameState.pBoost>0) gameState.pBoost--;
+
+  if(!skipTurn){
+    let eAtk=gameState.eWeakened?Math.round(gameState.enemy.atk*0.5):gameState.enemy.atk;
+    const fearStatus=gameState.eStatus.find(s=>s.type==='fear'||s.type==='fear2');
+    if(fearStatus) eAtk=Math.round(eAtk*(fearStatus.type==='fear2'?0.5:0.7));
+    let dmg=Math.round(eAtk*(0.9+Math.random()*0.2));
+    if(gameState.pShield>0){const ab=Math.min(gameState.pShield,dmg);gameState.pShield-=ab;dmg-=ab;if(ab>0) logs.push(`護盾吸收了${ab}傷害！`);}
+    const isPara=gameState.eStatus.some(s=>s.type==='para');
+    if(isPara&&Math.random()<0.4){logs.push(`${gameState.enemy.name} 麻痺發作，攻擊失敗！`);}
+    else if(dmg>0){gameState.pHp-=dmg;logs.push(`${gameState.enemy.name} 攻擊！造成${dmg}傷害！`);showDamageFloat('p',dmg,'dmg');}
+  }
+
+  if(gameState.enemy.special==='grow'){gameState.enemy.atk+=5;logs.push(`deadline惡魔越來越急！攻擊力提升！`);}
+
+  Object.keys(gameState.skillCooldowns).forEach(sk=>{if(gameState.skillCooldowns[sk]>0) gameState.skillCooldowns[sk]--;});
+
+  updateBattleUI();
+  setLog(logs);
+  buildSkillGrid();
+
+  if(gameState.pHp<=0){setTimeout(()=>onPlayerDefeated(),600);return;}
+  gameState.busy=false;
+  setBattleBtns(true);
+}
+
+function onPlayerDefeated(){
+  const key=gameState.team[gameState.activeIndex];
+  playerRoster[key].uses--;
+  addLog(`${JOBS[key].name} 倒下了！剩餘出場：${playerRoster[key].uses}次`,'log-sys');
+  updateTeamStatusBar();
+  const available=gameState.team.filter((k,i)=>k&&playerRoster[k].uses>0&&i!==gameState.activeIndex);
+  if(available.length>0){openSwitchPanel();}
+  else{showResult(false,'隊伍全滅！所有社畜都倒下了...');}
+}
+
+function onEnemyDefeated(){
+  const key=gameState.team[gameState.activeIndex];
+  const roster=playerRoster[key];
+  const xpGain=Math.round(30+gameState.currentFight*15+(gameState.enemy.isBoss?100:0));
+  roster.xp+=xpGain;
+  addLog(`獲得${xpGain}經驗值！`,'log-special');
+  while(roster.xp>=roster.xpNeed){
+    roster.xp-=roster.xpNeed;
+    roster.lv++;
+    roster.xpNeed=Math.round(roster.xpNeed*1.3);
+    addLog(`Lv.${roster.lv} 升級！`,'log-special');
+    const job=JOBS[key];
+    const evoLvs=key==='clerk'?[10]:[10,20,30];
+    if(evoLvs.includes(roster.lv)&&roster.evoStage<job.evolutions.length-1){
+      roster.evoStage++;
+      addLog(`✨ 進化！${job.evolutions[roster.evoStage]} 解鎖！`,'log-special');
+    }
+  }
+  gameState.currentFight++;
+  if(gameState.currentFight>=6){
+    setTimeout(()=>showResult(true,`${CHAPTERS[gameState.currentChapter].name} 通關！`),800);
+  }else{
+    setTimeout(()=>{clearLog();addLog('─── 下一場戰鬥 ───','log-sys');loadFight();},1000);
+  }
+}
+
+function doRun(){
+  if(gameState.busy) return;
+  const key=gameState.team[gameState.activeIndex];
+  const stat=JOBS[key].stats[playerRoster[key].evoStage];
+  const chance=stat.spd>gameState.enemy.spd?0.75:0.35;
+  if(Math.random()<chance){
+    addLog('成功逃跑！','log-sys');
+    playerRoster[key].uses--;
+    showResult(false,'逃跑成功，但這場不算...');
+  }else{
+    addLog('逃跑失敗！','log-sys');
+    gameState.busy=true;
+    setBattleBtns(false);
+    setTimeout(()=>enemyTurn(),600);
+  }
+}
+
+function openSwitchPanel(){
+  const panel=document.getElementById('switch-panel');
+  const roster=document.getElementById('switch-roster');
+  roster.innerHTML='';
+  panel.classList.remove('hidden');
+  gameState.team.forEach((key,i)=>{
+    if(!key||i===gameState.activeIndex) return;
+    const job=JOBS[key];
+    const r=playerRoster[key];
+    const depleted=r.uses<=0;
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:10px;padding:8px;background:#0d1117;border-radius:8px;margin-bottom:6px;'+(depleted?'opacity:0.4':'cursor:pointer');
+    div.innerHTML=`<div style="font-size:24px">${job.icon}</div><div><div style="font-size:14px;font-weight:bold">${job.evolutions[r.evoStage]}</div><div style="font-size:12px;color:#8b949e">Lv.${r.lv} ・ 剩餘：${r.uses}次</div></div>${depleted?'<div style="color:#f85149;font-size:12px">已用盡</div>':''}`;
+    if(!depleted) div.onclick=()=>switchMember(i);
+    roster.appendChild(div);
+  });
+}
+
+function closeSwitchPanel(){document.getElementById('switch-panel').classList.add('hidden');}
+
+function switchMember(idx){
+  const key=gameState.team[idx];
+  if(!key||playerRoster[key].uses<=0) return;
+  closeSwitchPanel();
+  loadPlayer(idx);
+  updateBattleUI();
+  buildSkillGrid();
+  addLog(`換上了 ${JOBS[key].evolutions[playerRoster[key].evoStage]}！`,'log-sys');
+  gameState.busy=false;
+  setBattleBtns(true);
+}
+
+function showResult(win,msg){
+  showScreen('screen-result');
+  const box=document.getElementById('result-box');
+  const title=document.getElementById('result-title');
+  const sub=document.getElementById('result-sub');
+  const btns=document.getElementById('result-btns');
+  if(win){
+    box.style.background='#0d2d1a';title.style.color='#56d364';
+    title.textContent='🎉 勝利！';sub.textContent=msg;
+    btns.innerHTML=`<button class="btn btn-green" onclick="nextChapter()">下一章</button><button class="btn btn-gray" onclick="showScreen('screen-menu')">回主選單</button>`;
+  }else{
+    box.style.background='#2d1a1a';title.style.color='#f85149';
+    title.textContent='💀 失敗...';sub.textContent=msg;
+    btns.innerHTML=`<button class="btn btn-blue" onclick="retryChapter()">重新挑戰</button><button class="btn btn-gray" onclick="showScreen('screen-menu')">回主選單</button>`;
+  }
+}
+
+function nextChapter(){
+  gameState.currentChapter=Math.min(gameState.currentChapter+1,CHAPTERS.length-1);
+  gameState.currentFight=0;
+  showScreen('screen-team-select');
+  buildRosterGrid();
+}
+
+function retryChapter(){
+  gameState.currentFight=0;
+  showScreen('screen-team-select');
+  buildRosterGrid();
+}
+
+function updateBattleUI(){
+  const key=gameState.team[gameState.activeIndex];
+  const job=JOBS[key];
+  const roster=playerRoster[key];
+  document.getElementById('p-icon').textContent=job.icon;
+  document.getElementById('p-name').textContent=job.evolutions[roster.evoStage];
+  document.getElementById('p-title').textContent=`Lv.${roster.lv} ${job.typeLabel}${gameState.pBoost>0?' ⚡強化中':''}`;
+  document.getElementById('p-hp-bar').style.width=Math.max(0,Math.round(gameState.pHp/gameState.pMaxHp*100))+'%';
+  const ps=gameState.pShield>0?` [護盾:${gameState.pShield}]`:'';
+  document.getElementById('p-hp-text').textContent=`${Math.max(0,gameState.pHp)}/${gameState.pMaxHp}${ps}`;
+  document.getElementById('p-status').innerHTML=gameState.pStatus.map(s=>`<span class="status-tag ${s.css}">${s.label}(${s.turns})</span>`).join('');
+  document.getElementById('e-icon').textContent=gameState.enemy.icon;
+  document.getElementById('e-name').textContent=gameState.enemy.name;
+  document.getElementById('e-title').textContent=gameState.enemy.title;
+  document.getElementById('e-hp-bar').style.width=Math.max(0,Math.round(gameState.eHp/gameState.eMaxHp*100))+'%';
+  document.getElementById('e-hp-text').textContent=`${Math.max(0,gameState.eHp)}/${gameState.eMaxHp}`;
+  document.getElementById('e-status').innerHTML=gameState.eStatus.map(s=>`<span class="status-tag ${s.css}">${s.label}(${s.turns})</span>`).join('');
+}
+
+function updateStageInfo(){
+  const chapter=CHAPTERS[gameState.currentChapter];
+  const fightNum=Math.min(gameState.currentFight+1,6);
+  const isBoss=gameState.currentFight===5;
+  document.getElementById('stage-info').textContent=`${chapter.name} · 第${fightNum}場${isBoss?' ⚠️BOSS':''}`;
+  document.getElementById('stage-progress').style.width=Math.round(gameState.currentFight/6*100)+'%';
+}
+
+function updateTeamStatusBar(){
+  const bar=document.getElementById('team-status');
+  bar.innerHTML='';
+  gameState.team.forEach((key,i)=>{
+    if(!key) return;
+    const job=JOBS[key];
+    const roster=playerRoster[key];
+    const isActive=i===gameState.activeIndex;
+    const depleted=roster.uses<=0;
+    bar.innerHTML+=`<div class="member-status ${isActive?'active':''} ${depleted?'depleted':''}">${job.icon} ${job.evolutions[roster.evoStage]}(${roster.uses})</div>`;
+  });
+}
+
+function showDamageFloat(target,value,type){
+  const box=document.getElementById(target==='p'?'player-box':'enemy-box');
+  const el=document.createElement('div');
+  el.className=`damage-float ${type}`;
+  el.textContent=type==='heal'?`+${value}`:`-${value}`;
+  el.style.left=Math.random()*60+20+'%';
+  el.style.top='30%';
+  box.appendChild(el);
+  setTimeout(()=>el.remove(),1200);
+}
+
+function addLog(line,cls=''){
+  const log=document.getElementById('battle-log');
+  const d=document.createElement('div');
+  d.className='log-line '+cls;
+  d.textContent=line;
+  log.appendChild(d);
+  log.scrollTop=log.scrollHeight;
+}
+
+function setLog(lines){
+  lines.forEach(l=>{
+    const cls=l.includes('傷害')?'log-dmg':l.includes('回復')?'log-heal':l.includes('狀態')||l.includes('控制')?'log-ctrl':l.includes('剋制')||l.includes('升級')||l.includes('進化')||l.includes('獲得')?'log-special':'';
+    addLog(l,cls);
+  });
+}
+
+function clearLog(){document.getElementById('battle-log').innerHTML='';}
+
+function setBattleBtns(on){
+  const ids=['atk-btn','switch-btn','run-btn'];
+  ids.forEach(id=>{const b=document.getElementById(id);if(b) b.disabled=!on;});
+  if(on) buildSkillGrid();
+  else document.querySelectorAll('.skill-btn').forEach(b=>b.disabled=true);
+}
+
+function init(){
+  initRoster();
+  Object.entries(JOBS).forEach(([key,job])=>{
+    if(job.unlocked) gameState.unlockedJobs.add(key);
+  });
+  buildJobGrid();
+}
+
+document.addEventListener('DOMContentLoaded',()=>init());
+</script>
+</body>
+</html>
