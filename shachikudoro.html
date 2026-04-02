@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>社畜鬥螺</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Microsoft JhengHei',sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#080c14;color:#e6edf3;min-height:100vh;overflow-x:hidden}
+.screen{display:none;padding:1rem;max-width:680px;margin:0 auto}
+.screen.active{display:block}
+.game-title{text-align:center;font-size:30px;font-weight:bold;color:#d29922;letter-spacing:6px;margin-bottom:4px;text-shadow:0 0 30px rgba(210,153,34,0.4)}
+.game-sub{text-align:center;font-size:11px;color:#8b949e;margin-bottom:1rem;letter-spacing:3px}
+.card{background:#0d1117;border:1px solid #21262d;border-radius:12px;padding:1rem;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:bold;color:#d29922;margin-bottom:8px;letter-spacing:1px}
+.btn{display:inline-block;padding:8px 16px;font-size:13px;border-radius:8px;border:none;cursor:pointer;font-weight:bold;transition:all 0.12s;text-align:center;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(0.95)}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.btn-gold{background:#9e6a03;color:#faeeda}
+.btn-blue{background:#1f6feb;color:white}
+.btn-red{background:#da3633;color:white}
+.btn-green{background:#238636;color:white}
+.btn-gray{background:#21262d;color:#c9d1d9;border:1px solid #30363d}
+.btn-purple{background:#6e40c9;color:white}
+.btn-big{padding:12px 24px;font-size:14px;width:100%;margin-bottom:8px;border-radius:10px}
+.coin-display{display:inline-flex;align-items:center;gap:6px;background:#1a1200;border:1px solid #3d2a00;border-radius:20px;padding:5px 12px;font-size:15px;font-weight:bold;color:#d29922}
+.rule-section{margin-bottom:14px}
+.rule-section-title{font-size:13px;font-weight:bold;color:#58a6ff;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #21262d}
+.rule-item{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid #0d1117;font-size:12px}
+.rule-item:last-child{border-bottom:none}
+.rule-icon{font-size:18px;min-width:24px;text-align:center;margin-top:1px}
+.rule-content{flex:1}
+.rule-title{font-weight:bold;color:#e6edf3;margin-bottom:2px}
+.rule-desc{color:#8b949e;line-height:1.5}
+.rule-score-badge{background:#1a1200;border:1px solid #3d2a00;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:bold;color:#d29922;white-space:nowrap}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.score-card{background:#0a0f1a;border-radius:8px;padding:10px;text-align:center}
+.score-card-num{font-size:28px;font-weight:bold;line-height:1;margin-bottom:3px}
+.score-card-label{font-size:11px;color:#8b949e}
+.score-card-desc{font-size:10px;color:#6e7681;margin-top:3px}
+.mechanic-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.mechanic-card{background:#0a0f1a;border-radius:8px;padding:10px;border-left:3px solid}
+.mechanic-title{font-size:12px;font-weight:bold;margin-bottom:4px}
+.mechanic-desc{font-size:11px;color:#8b949e;line-height:1.5}
+.height-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px}
+.height-table th{background:#161b22;color:#8b949e;padding:5px 8px;text-align:center;font-weight:normal}
+.height-table td{padding:5px 8px;text-align:center;border-bottom:1px solid #161b22;color:#e6edf3}
+.height-table tr:last-child td{border-bottom:none}
+.controls-box{background:#0a0f1a;border-radius:8px;padding:10px;margin-bottom:8px}
+.controls-row{display:flex;justify-content:space-between;gap:10px}
+.controls-player{flex:1;background:#080c14;border-radius:6px;padding:8px}
+.controls-player-title{font-size:12px;font-weight:bold;margin-bottom:5px}
+.controls-item{font-size:11px;color:#8b949e;padding:2px 0}
+.blade-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.blade-card{background:#0a0f1a;border:2px solid #21262d;border-radius:10px;padding:10px 6px;cursor:pointer;transition:all 0.12s;text-align:center;position:relative}
+.blade-card:active{transform:scale(0.94)}
+.blade-card.selected{border-color:#d29922;background:#1a1200}
+.blade-canvas-wrap{display:flex;justify-content:center;margin-bottom:6px}
+.blade-name-small{font-size:11px;font-weight:bold;margin-bottom:2px;line-height:1.2}
+.blade-type-tag{font-size:9px;padding:1px 5px;border-radius:3px;display:inline-block;margin-bottom:4px}
+.blade-stat-mini{display:flex;justify-content:center;gap:6px;font-size:9px}
+.tag-atk{background:#3d1a1a;color:#f85149}
+.tag-def{background:#1a2d3d;color:#58a6ff}
+.tag-end{background:#1a3d1a;color:#56d364}
+.tag-ctrl{background:#1a1a3d;color:#bc8cff}
+.tag-dot{background:#3d2000;color:#f0883e}
+.tag-stack{background:#2d1a3d;color:#d2a8ff}
+.tag-all{background:#0d3d2d;color:#39d353}
+.tag-god{background:#3d3000;color:#d29922}
+.tag-wild{background:#3d0a0a;color:#ff7b72}
+.tag-rage{background:#4d1a00;color:#ff9966}
+.tag-evil{background:#1a0a3d;color:#d2a8ff}
+.blade-detail-box{background:#0a0f1a;border:1px solid #30363d;border-radius:10px;padding:12px;margin-bottom:10px}
+.blade-detail-name{font-size:15px;font-weight:bold;margin-bottom:4px}
+.blade-detail-desc{font-size:12px;color:#8b949e;margin-bottom:8px;line-height:1.5}
+.skill-item{background:#080c14;border-radius:6px;padding:8px;margin-bottom:5px}
+.skill-item-name{font-size:12px;font-weight:bold;color:#d29922;margin-bottom:2px}
+.skill-item-desc{font-size:11px;color:#8b949e;line-height:1.4}
+.skill-item-cd{font-size:10px;color:#6e7681;margin-top:2px}
+.parts-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;-webkit-overflow-scrolling:touch}
+.parts-scroll::-webkit-scrollbar{height:3px}
+.parts-scroll::-webkit-scrollbar-track{background:#161b22}
+.parts-scroll::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+.part-chip{background:#0a0f1a;border:2px solid #21262d;border-radius:8px;padding:8px 10px;cursor:pointer;white-space:nowrap;transition:all 0.12s;min-width:90px;text-align:center;flex-shrink:0}
+.part-chip:active{transform:scale(0.94)}
+.part-chip.selected{border-color:#d29922;background:#1a1200}
+.part-chip.locked{opacity:0.45;cursor:not-allowed}
+.part-chip-name{font-size:12px;font-weight:bold;color:#e6edf3;margin-bottom:3px}
+.part-chip-stat{font-size:10px;color:#8b949e;line-height:1.5}
+.part-chip-price{font-size:10px;color:#d29922;margin-top:2px}
+.bey-preview-wrap{background:#0a0f1a;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center}
+.bey-preview-canvas{flex-shrink:0}
+.bey-preview-stats{flex:1}
+.bey-stat-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.bey-stat-label{font-size:10px;color:#8b949e;width:30px}
+.bey-stat-bar-bg{flex:1;background:#161b22;border-radius:3px;height:5px}
+.bey-stat-bar-fg{height:5px;border-radius:3px;transition:width 0.3s}
+.bey-stat-val{font-size:10px;width:20px;text-align:right}
+.league-scroll{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px}
+.opp-node{background:#0a0f1a;border:2px solid #21262d;border-radius:8px;padding:8px 4px;text-align:center;transition:all 0.12s;position:relative;cursor:default}
+.opp-node.available{border-color:#238636;cursor:pointer}
+.opp-node.available:active{transform:scale(0.94)}
+.opp-node.completed{border-color:#1f3a5f;opacity:0.6}
+.opp-node.locked{opacity:0.35}
+.opp-node.boss-node{border-color:#da3633}
+.opp-node.boss-node.available{box-shadow:0 0 8px rgba(218,54,51,0.4)}
+.node-canvas-wrap{display:flex;justify-content:center;margin-bottom:3px}
+.node-name{font-size:8px;color:#8b949e;line-height:1.2;margin-bottom:2px}
+.node-reward{font-size:8px;color:#d29922}
+.node-check{position:absolute;top:-5px;right:-5px;font-size:11px}
+.prefight-canvas-wrap{text-align:center;margin-bottom:12px}
+.prefight-dialog-box{background:#0a0f1a;border:1px solid #30363d;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start}
+.prefight-portrait{flex-shrink:0}
+.prefight-speech{font-size:13px;color:#e6edf3;line-height:1.6;font-style:italic}
+.prefight-info{font-size:12px;color:#8b949e;line-height:1.8;margin-bottom:10px}
+.battle-header{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;margin-bottom:6px}
+.battle-fighter{flex:1}
+.battle-fighter-name{font-size:12px;font-weight:bold;margin-bottom:3px}
+.battle-hp-wrap{background:#21262d;border-radius:3px;height:6px}
+.battle-hp-fill{height:6px;border-radius:3px;transition:width 0.25s}
+.battle-hp-p1{background:#58a6ff}
+.battle-hp-p2{background:#f85149}
+.battle-hp-text{font-size:9px;color:#6e7681;margin-top:1px}
+.battle-vs{font-size:16px;color:#d29922;font-weight:bold;padding:0 8px}
+.score-row{display:flex;justify-content:center;gap:24px;margin-bottom:6px}
+.score-box-b{text-align:center}
+.score-big{font-size:38px;font-weight:bold;line-height:1}
+.score-lbl{font-size:9px;color:#6e7681}
+.arena-wrap{position:relative;margin-bottom:6px;display:flex;justify-content:center}
+.arena-canvas{display:block;touch-action:none;border-radius:8px}
+.overlay-controls{position:absolute;bottom:6px;left:6px;right:6px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}
+.joystick-zone{pointer-events:all;width:90px;height:90px;position:relative}
+.joy-base{width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.15);position:relative}
+.joy-knob{width:36px;height:36px;border-radius:50%;background:rgba(210,153,34,0.75);border:2px solid #d29922;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);cursor:grab}
+.btn-cluster{pointer-events:all;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.circle-btn{width:62px;height:62px;border-radius:50%;border:none;cursor:pointer;font-size:11px;font-weight:bold;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;-webkit-tap-highlight-color:transparent}
+.circle-btn:active{transform:scale(0.88)}
+.circle-btn.skill{background:rgba(110,64,201,0.82);border:2px solid #8957e5;color:white}
+.circle-btn.launch{background:rgba(158,106,3,0.85);border:2px solid #d29922;color:#faeeda}
+.circle-btn.disabled{opacity:0.4;cursor:not-allowed}
+.circle-cd{font-size:8px;opacity:0.85}
+.battle-log-wrap{background:#0a0f1a;border:1px solid #161b22;border-radius:6px;padding:6px 8px;height:75px;overflow-y:auto;font-size:11px;margin-bottom:6px}
+.log-l{padding:1px 0;line-height:1.45}
+.log-atk{color:#f85149}
+.log-def{color:#58a6ff}
+.log-special{color:#d29922;font-weight:bold}
+.log-crit{color:#ffd700;font-weight:bold}
+.log-sys{color:#6e7681;font-style:italic}
+.log-acc{color:#56d364}
+.result-hero{text-align:center;padding:20px 12px;border-radius:12px;margin-bottom:12px}
+.result-h-title{font-size:26px;font-weight:bold;letter-spacing:3px;margin-bottom:8px}
+.result-h-coin{font-size:20px;color:#d29922;margin-bottom:5px}
+.result-h-sub{font-size:12px;color:#8b949e}
+.shop-section-title{font-size:13px;font-weight:bold;color:#58a6ff;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #21262d}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.shop-card{background:#0a0f1a;border:2px solid #21262d;border-radius:10px;padding:10px;text-align:center;transition:all 0.12s}
+.shop-card.buyable{cursor:pointer;border-color:#30363d}
+.shop-card.buyable:active{transform:scale(0.96)}
+.shop-card.owned{border-color:#1f3a5f;opacity:0.65;cursor:default}
+.shop-card.cant{opacity:0.45;cursor:not-allowed}
+.shop-card-name{font-size:12px;font-weight:bold;color:#e6edf3;margin-bottom:3px}
+.shop-card-stat{font-size:10px;color:#8b949e;line-height:1.5;margin-bottom:5px}
+.shop-card-price{font-size:13px;font-weight:bold;color:#d29922}
+.shop-card-owned{font-size:11px;color:#56d364}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<!-- 主選單 -->
+<div id="screen-home" class="screen active">
+  <div style="padding-top:1rem">
+    <div class="game-title">社畜陀螺大師</div>
+    <div class="game-sub">SHACHU BEY MASTER</div>
+    <div style="text-align:center;margin-bottom:1rem">
+      <canvas id="hero-canvas" width="280" height="160" style="display:inline-block"></canvas>
+    </div>
+    <div style="text-align:center;margin-bottom:1rem">
+      <div class="coin-display">🪙 <span id="home-coins">0</span></div>
+    </div>
+    <button class="btn btn-gold btn-big" onclick="goToBlade()">開始冒險</button>
+    <button class="btn btn-blue btn-big" onclick="goToLeague()">聯賽地圖</button>
+    <button class="btn btn-purple btn-big" onclick="goToShop()">零件商店</button>
+    <button class="btn btn-gray btn-big" onclick="showScreen('screen-rules')">遊戲說明</button>
+  </div>
+</div>
+
+<!-- 遊戲說明 -->
+<div id="screen-rules" class="screen">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <button class="btn btn-gray" onclick="showScreen('screen-home')" style="padding:5px 12px;font-size:13px">←</button>
+    <div style="font-size:17px;font-weight:bold;color:#d29922">遊戲說明</div>
+  </div>
+
+  <div class="card">
+    <div class="rule-section">
+      <div class="rule-section-title">得分規則 — 先得4分獲勝</div>
+      <div class="score-grid">
+        <div class="score-card">
+          <div class="score-card-num" style="color:#56d364">+1</div>
+          <div class="score-card-label">🌀 轉停勝</div>
+          <div class="score-card-desc">對手陀螺耗盡動能自然停止</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-num" style="color:#f85149">+2</div>
+          <div class="score-card-label">💥 爆裂勝</div>
+          <div class="score-card-desc">撞擊使對手陀螺爆裂分離</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-num" style="color:#58a6ff">+2</div>
+          <div class="score-card-label">🚀 擊飛勝</div>
+          <div class="score-card-desc">將對手撞出場地邊緣</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-num" style="color:#ffd700">+3</div>
+          <div class="score-card-label">⚡ 完全勝</div>
+          <div class="score-card-desc">高速撞擊同時觸發擊飛+爆裂</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-section">
+      <div class="rule-section-title">場地機制</div>
+      <div class="mechanic-grid">
+        <div class="mechanic-card" style="border-color:#d29922">
+          <div class="mechanic-title" style="color:#d29922">⚡ 加速帶</div>
+          <div class="mechanic-desc">場地上有兩條弧形加速帶，經過時陀螺瞬間加速。速度太高時撞擊威力翻倍，但若衝撞力超過臨界值，可能直接飛出場外！</div>
+        </div>
+        <div class="mechanic-card" style="border-color:#58a6ff">
+          <div class="mechanic-title" style="color:#58a6ff">⛰️ 高低差</div>
+          <div class="mechanic-desc">場地中心為高台，外圍較低。從中心往外衝的陀螺會因坡度加速，輕型陀螺受影響更大。善用地形製造衝撞機會！</div>
+        </div>
+        <div class="mechanic-card" style="border-color:#f85149">
+          <div class="mechanic-title" style="color:#f85149">🔄 隨機轉向</div>
+          <div class="mechanic-desc">每局開戰時隨機決定順時針或逆時針旋轉。反向碰撞威力加倍，同向碰撞互推但威力較小。</div>
+        </div>
+        <div class="mechanic-card" style="border-color:#56d364">
+          <div class="mechanic-title" style="color:#56d364">💥 爆裂條件</div>
+          <div class="mechanic-desc">攻擊力×速度×高度差異倍率超過臨界值觸發爆裂。低高度陀螺（60系）打高高度（80系）爆裂機率大幅提升！</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-section">
+      <div class="rule-section-title">固鎖高度系統</div>
+      <table class="height-table">
+        <tr><th>高度</th><th>代表</th><th>爆裂傾向</th><th>被爆裂風險</th></tr>
+        <tr><td style="color:#f85149">60（低）</td><td>1-60 ～ 9-60</td><td style="color:#f85149">高 — 容易打爆對手</td><td style="color:#56d364">低</td></tr>
+        <tr><td style="color:#d29922">70（中）</td><td>1-70 ～ 9-70</td><td style="color:#d29922">中</td><td style="color:#d29922">中</td></tr>
+        <tr><td style="color:#58a6ff">80（高）</td><td>1-80 ～ 9-80</td><td style="color:#56d364">低</td><td style="color:#f85149">高 — 容易被60系爆裂</td></tr>
+      </table>
+      <div style="font-size:11px;color:#6e7681">數字越大代表重量越重，越難被擊飛但也越難快速移動</div>
+    </div>
+
+    <div class="rule-section">
+      <div class="rule-section-title">碰撞物理</div>
+      <div style="font-size:12px;color:#8b949e;line-height:1.8">
+        <div>• 陀螺碰撞時互相推開，不會穿越</div>
+        <div>• 重量差異決定誰被推得更遠</div>
+        <div>• 反向旋轉碰撞威力 ×2</div>
+        <div>• 加速帶上碰撞衝擊力額外 ×1.5</div>
+        <div>• 撞牆會反彈，每次撞牆消耗少量耐久</div>
+      </div>
+    </div>
+
+    <div class="rule-section">
+      <div class="rule-section-title">操作方式</div>
+      <div class="controls-box">
+        <div class="controls-row">
+          <div class="controls-player">
+            <div class="controls-player-title" style="color:#58a6ff">📱 手機操作</div>
+            <div class="controls-item">移動：畫面左下搖桿</div>
+            <div class="controls-item">技能：右下紫色按鈕</div>
+            <div class="controls-item">發射：右下金色按鈕</div>
+          </div>
+          <div class="controls-player">
+            <div class="controls-player-title" style="color:#d29922">💻 電腦操作</div>
+            <div class="controls-item">移動：W A S D</div>
+            <div class="controls-item">技能：空白鍵</div>
+            <div class="controls-item">發射：Enter</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-section" style="margin-bottom:0">
+      <div class="rule-section-title">金幣系統</div>
+      <div style="font-size:12px;color:#8b949e;line-height:1.8">
+        <div>🏆 贏得比賽：依對手強度獲得較多金幣</div>
+        <div>💀 輸掉比賽：仍獲得少量金幣，不白打</div>
+        <div>🛒 商店：用金幣解鎖更強的固鎖和軸心</div>
+        <div>💾 自動存檔：金幣和零件永久保留在您的瀏覽器</div>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-gray btn-big" onclick="showScreen('screen-home')">返回主選單</button>
+</div>
+
+<!-- 職業選擇 -->
+<div id="screen-blade" class="screen">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <button class="btn btn-gray" onclick="showScreen('screen-home')" style="padding:5px 12px">←</button>
+    <div style="font-size:15px;font-weight:bold;color:#d29922">選擇戰刃職業</div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;color:#8b949e;margin-bottom:10px">職業即戰刃，決定技能風格。搭配固鎖和軸心打造你的專屬陀螺。</div>
+    <div class="blade-grid" id="blade-select-grid"></div>
+    <div id="blade-detail-box" class="blade-detail-box hidden">
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+        <canvas id="blade-detail-canvas" width="64" height="64" style="flex-shrink:0;border-radius:50%;background:#080c14"></canvas>
+        <div style="flex:1">
+          <div class="blade-detail-name" id="blade-detail-name"></div>
+          <div class="blade-detail-desc" id="blade-detail-desc"></div>
+        </div>
+      </div>
+      <div id="blade-detail-skills"></div>
+    </div>
+    <div style="font-size:11px;color:#8b949e;margin-bottom:8px">
+      隱藏職業：
+      <input id="blade-secret-input" type="password" placeholder="密碼" maxlength="10"
+        style="background:#0a0f1a;border:1px solid #8957e5;border-radius:4px;padding:2px 6px;color:#d2a8ff;font-size:11px;width:80px;margin:0 4px">
+      <button class="btn btn-gray" style="padding:2px 8px;font-size:11px" onclick="checkBladeSecret()">解鎖</button>
+      <span id="blade-secret-msg" style="font-size:10px;margin-left:4px"></span>
+    </div>
+    <button class="btn btn-gold btn-big" id="confirm-blade-btn" disabled onclick="showScreen('screen-parts')">確認職業 →</button>
+  </div>
+</div>
+
+<!-- 零件選擇 -->
+<div id="screen-parts" class="screen">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <button class="btn btn-gray" onclick="showScreen('screen-blade')" style="padding:5px 12px">←</button>
+    <div style="font-size:15px;font-weight:bold;color:#d29922">選擇固鎖與軸心</div>
+  </div>
+  <div class="card">
+    <div class="card-title">固鎖輪盤 <span style="font-size:11px;color:#8b949e;font-weight:normal">（影響重量、刀刃數、高度）</span></div>
+    <div class="parts-scroll" id="ratchet-scroll"></div>
+    <div class="card-title" style="margin-top:6px">軸心 <span style="font-size:11px;color:#8b949e;font-weight:normal">（影響移動方式和耐久）</span></div>
+    <div class="parts-scroll" id="bit-scroll"></div>
+    <div class="bey-preview-wrap" id="bey-preview-wrap">
+      <canvas id="bey-preview-canvas" class="bey-preview-canvas" width="80" height="80" style="border-radius:50%;background:#080c14"></canvas>
+      <div class="bey-preview-stats" id="bey-preview-stats">
+        <div style="font-size:12px;color:#8b949e">選擇零件以查看屬性</div>
+      </div>
+    </div>
+    <button class="btn btn-gold btn-big" id="confirm-parts-btn" disabled onclick="goToLeague()">確認配置 → 前往聯賽</button>
+  </div>
+</div>
+
+<!-- 聯賽地圖 -->
+<div id="screen-league" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-size:15px;font-weight:bold;color:#d29922">聯賽地圖</div>
+    <div class="coin-display" style="font-size:12px;padding:4px 10px">🪙 <span id="league-coins">0</span></div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;color:#8b949e;margin-bottom:8px">打敗35位對手，成為社畜陀螺傳奇！</div>
+    <div class="league-scroll" id="league-map"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#8b949e;margin-top:4px">
+      <span><span style="color:#238636">■</span> 可挑戰</span>
+      <span><span style="color:#1f3a5f">■</span> 已完成</span>
+      <span><span style="color:#da3633">■</span> Boss</span>
+      <span><span style="color:#21262d">■</span> 鎖定</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-gray" style="flex:1" onclick="showScreen('screen-home')">主選單</button>
+    <button class="btn btn-purple" style="flex:1" onclick="goToShop()">商店</button>
+  </div>
+</div>
+
+<!-- 戰前對話 -->
+<div id="screen-prefight" class="screen">
+  <div class="prefight-canvas-wrap">
+    <canvas id="prefight-canvas" width="160" height="160" style="border-radius:50%;background:#0d1117;border:3px solid #30363d"></canvas>
+  </div>
+  <div class="prefight-dialog-box">
+    <div class="prefight-portrait">
+      <canvas id="prefight-portrait" width="44" height="44" style="border-radius:50%;background:#0a0f1a;border:2px solid #30363d"></canvas>
+    </div>
+    <div class="prefight-speech" id="prefight-speech"></div>
+  </div>
+  <div class="prefight-info" id="prefight-info"></div>
+  <button class="btn btn-gold btn-big" onclick="startBattle()">迎戰！</button>
+  <button class="btn btn-gray btn-big" onclick="showScreen('screen-league')">返回地圖</button>
+</div>
+
+<!-- 戰鬥 -->
+<div id="screen-battle" class="screen" style="padding:6px">
+  <div class="battle-header">
+    <div class="battle-fighter">
+      <div class="battle-fighter-name" style="color:#58a6ff" id="b-p1-name">玩家</div>
+      <div class="battle-hp-wrap"><div class="battle-hp-fill battle-hp-p1" id="b-p1-hp" style="width:100%"></div></div>
+      <div class="battle-hp-text" id="b-p1-hp-text">100</div>
+    </div>
+    <div class="battle-vs">VS</div>
+    <div class="battle-fighter" style="text-align:right">
+      <div class="battle-fighter-name" style="color:#f85149" id="b-p2-name">對手</div>
+      <div class="battle-hp-wrap"><div class="battle-hp-fill battle-hp-p2" id="b-p2-hp" style="width:100%"></div></div>
+      <div class="battle-hp-text" id="b-p2-hp-text">100</div>
+    </div>
+  </div>
+  <div class="score-row">
+    <div class="score-box-b"><div class="score-big" style="color:#58a6ff" id="b-p1-score">0</div><div class="score-lbl">玩家</div></div>
+    <div style="font-size:22px;color:#30363d;padding-top:6px">:</div>
+    <div class="score-box-b"><div class="score-big" style="color:#f85149" id="b-p2-score">0</div><div class="score-lbl">對手</div></div>
+  </div>
+  <div class="arena-wrap">
+    <canvas id="battle-canvas" class="arena-canvas" width="360" height="360"></canvas>
+    <div class="overlay-controls">
+      <div class="joystick-zone" id="joystick-zone">
+        <div class="joy-base" id="joy-base">
+          <div class="joy-knob" id="joy-knob"></div>
+        </div>
+      </div>
+      <div class="btn-cluster">
+        <button class="circle-btn skill" id="skill-circle-btn" onclick="triggerSkill()">
+          <div id="skill-circle-label">技能</div>
+          <div class="circle-cd" id="skill-circle-cd">可用</div>
+        </button>
+        <button class="circle-btn launch" id="launch-circle-btn" onclick="triggerLaunch()">
+          <div>發射</div>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="battle-log-wrap" id="battle-log"></div>
+</div>
+
+<!-- 戰鬥結果 -->
+<div id="screen-result" class="screen">
+  <div class="result-hero" id="result-hero">
+    <div class="result-h-title" id="result-title"></div>
+    <div class="result-h-coin" id="result-coin"></div>
+    <div class="result-h-sub" id="result-sub"></div>
+  </div>
+  <button class="btn btn-gold btn-big" onclick="showScreen('screen-league')">返回聯賽地圖</button>
+  <button class="btn btn-gray btn-big" onclick="showScreen('screen-home')">回主選單</button>
+</div>
+
+<!-- 商店 -->
+<div id="screen-shop" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-size:15px;font-weight:bold;color:#d29922">零件商店</div>
+    <div class="coin-display" style="font-size:12px;padding:4px 10px">🪙 <span id="shop-coins">0</span></div>
+  </div>
+  <div class="card">
+    <div class="shop-section-title">固鎖輪盤</div>
+    <div class="shop-grid" id="shop-ratchet-grid"></div>
+    <div class="shop-section-title">軸心</div>
+    <div class="shop-grid" id="shop-bit-grid"></div>
+  </div>
+  <button class="btn btn-gray btn-big" onclick="showScreen('screen-home')">返回主選單</button>
+</div>
+
+</body>
+</html>
