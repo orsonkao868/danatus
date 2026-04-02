@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>戰鬥陀螺 BeyBattle X</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Microsoft JhengHei',sans-serif}
+body{background:#0a0a1a;color:#e6edf3;min-height:100vh;padding:1rem}
+.title{text-align:center;font-size:32px;font-weight:bold;background:linear-gradient(90deg,#58a6ff,#d29922,#f85149);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;letter-spacing:6px}
+.subtitle{text-align:center;font-size:13px;color:#8b949e;margin-bottom:1.5rem}
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:1rem 1.25rem;margin-bottom:12px}
+.card-title{font-size:16px;font-weight:bold;color:#58a6ff;margin-bottom:10px}
+.btn{padding:8px 18px;font-size:13px;border-radius:8px;border:none;cursor:pointer;margin:3px;font-weight:bold;transition:all 0.2s}
+.btn:hover{transform:translateY(-1px)}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.btn-blue{background:#1f6feb;color:white}
+.btn-red{background:#da3633;color:white}
+.btn-gold{background:#9e6a03;color:white}
+.btn-gray{background:#21262d;color:#c9d1d9;border:1px solid #30363d}
+.btn-green{background:#238636;color:white}
+.btn-big{padding:14px 32px;font-size:16px}
+.section-title{font-size:13px;font-weight:bold;color:#8b949e;margin:10px 0 6px;text-transform:uppercase;letter-spacing:2px}
+.parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.part-card{background:#0d1117;border:2px solid #30363d;border-radius:8px;padding:10px;cursor:pointer;transition:all 0.2s;text-align:center}
+.part-card:hover{border-color:#58a6ff;transform:translateY(-1px)}
+.part-card.selected{border-color:#d29922;background:#1a1500}
+.part-name{font-size:13px;font-weight:bold;color:#e6edf3;margin-bottom:4px}
+.part-stats{font-size:11px;color:#8b949e;line-height:1.7}
+.stat-atk{color:#f85149}
+.stat-def{color:#58a6ff}
+.stat-end{color:#56d364}
+.stat-bar-wrap{background:#21262d;border-radius:3px;height:4px;margin:1px 0}
+.stat-bar{height:4px;border-radius:3px}
+.bar-atk{background:#f85149}
+.bar-def{background:#58a6ff}
+.bar-end{background:#56d364}
+.player-setup{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px}
+.player-panel{background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px}
+.player-title{font-size:15px;font-weight:bold;margin-bottom:8px}
+.p1-title{color:#58a6ff}
+.p2-title{color:#f85149}
+.selected-parts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.selected-tag{font-size:11px;padding:3px 8px;border-radius:4px;background:#21262d;color:#d29922;border:1px solid #3d2a00}
+.arena-wrap{background:#0a0a1a;border-radius:16px;padding:16px;margin-bottom:12px;text-align:center}
+.arena-canvas{display:block;margin:0 auto;border-radius:50%;border:3px solid #30363d}
+.score-board{display:flex;justify-content:space-around;align-items:center;margin-bottom:12px}
+.score-box{text-align:center}
+.score-name{font-size:14px;font-weight:bold;margin-bottom:4px}
+.score-num{font-size:48px;font-weight:bold;line-height:1}
+.score-vs{font-size:24px;color:#8b949e;font-weight:bold}
+.battle-log{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px;height:100px;overflow-y:auto;margin-bottom:10px;font-size:12px}
+.log-line{padding:2px 0;border-bottom:1px solid #21262d;line-height:1.6}
+.log-atk{color:#f85149}
+.log-def{color:#58a6ff}
+.log-end{color:#56d364}
+.log-special{color:#d29922;font-weight:bold}
+.log-sys{color:#8b949e;font-style:italic}
+.effect-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:bold;margin-left:4px}
+.eff-fly{background:#1f3a5f;color:#79c0ff}
+.eff-burst{background:#3d1a1a;color:#f85149}
+.eff-stop{background:#1a3d1a;color:#56d364}
+.eff-out{background:#3d2a00;color:#d29922}
+.result-banner{text-align:center;padding:20px;border-radius:12px;margin-bottom:12px}
+.result-winner{font-size:28px;font-weight:bold;margin-bottom:6px}
+.result-detail{font-size:14px;color:#8b949e}
+.stat-preview{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.stat-item{font-size:12px}
+.part-type-badge{font-size:10px;padding:1px 6px;border-radius:3px;margin-bottom:4px;display:inline-block}
+.type-atk{background:#3d1a1a;color:#f85149}
+.type-def{background:#1a2d3d;color:#58a6ff}
+.type-end{background:#1a3d1a;color:#56d364}
+.type-bal{background:#2d2a00;color:#d29922}
+.hidden{display:none}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.shake{animation:shake 0.3s}
+</style>
+</head>
+<body>
+
+<div class="title">戰 鬥 陀 螺</div>
+<div class="subtitle">BeyBattle X — 組裝你的陀螺，決一勝負！</div>
+
+<div id="screen-setup">
+  <div class="card">
+    <div class="card-title">組裝陀螺</div>
+    <div class="player-setup">
+      <div class="player-panel">
+        <div class="player-title p1-title">玩家一</div>
+        <div class="selected-parts" id="p1-selected">
+          <span style="font-size:12px;color:#8b949e">尚未選擇零件</span>
+        </div>
+        <div class="stat-preview" id="p1-stats"></div>
+      </div>
+      <div class="player-panel">
+        <div class="player-title p2-title">玩家二</div>
+        <div class="selected-parts" id="p2-selected">
+          <span style="font-size:12px;color:#8b949e">尚未選擇零件</span>
+        </div>
+        <div class="stat-preview" id="p2-stats"></div>
+      </div>
+    </div>
+
+    <div class="section-title">主要戰刃 — 選擇攻擊風格</div>
+    <div class="parts-grid" id="blade-grid"></div>
+
+    <div class="section-title">固鎖輪盤 — 選擇重量與穩定性</div>
+    <div class="parts-grid" id="ratchet-grid"></div>
+
+    <div class="section-title">軸心 — 選擇移動方式</div>
+    <div class="parts-grid" id="bit-grid"></div>
+
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn btn-gold btn-big" id="battle-btn" onclick="startBattle()" disabled>開始對戰！</button>
+      <button class="btn btn-gray" onclick="resetSetup()">重置</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-battle" class="hidden">
+  <div class="score-board">
+    <div class="score-box">
+      <div class="score-name p1-title" id="p1-score-name">玩家一</div>
+      <div class="score-num" style="color:#58a6ff" id="p1-score">0</div>
+    </div>
+    <div class="score-vs">VS</div>
+    <div class="score-box">
+      <div class="score-name p2-title" id="p2-score-name">玩家二</div>
+      <div class="score-num" style="color:#f85149" id="p2-score">0</div>
+    </div>
+  </div>
+
+  <div class="arena-wrap">
+    <canvas id="arena" class="arena-canvas" width="500" height="500"></canvas>
+  </div>
+
+  <div class="battle-log" id="battle-log"></div>
+
+  <div style="text-align:center">
+    <button class="btn btn-gold" id="round-btn" onclick="startRound()">發射！</button>
+    <button class="btn btn-gray" onclick="backToSetup()">重新組裝</button>
+  </div>
+</div>
+
+<div id="screen-result" class="hidden">
+  <div class="result-banner" id="result-banner">
+    <div class="result-winner" id="result-winner"></div>
+    <div class="result-detail" id="result-detail"></div>
+  </div>
+  <div style="text-align:center">
+    <button class="btn btn-gold btn-big" onclick="playAgain()">再來一局</button>
+    <button class="btn btn-gray" onclick="backToSetup()">重新組裝</button>
+  </div>
+</div>
+<script>
+const BLADES={
+  'Phoenix Wing':{name:'鳳凰飛翼',type:'atk',atk:8,def:3,end:3,desc:'不對稱翼型，擊飛機率極高',color:'#58a6ff',shape:'phoenix',special:'fly'},
+  'Hells Scythe':{name:'地獄鐮刀',type:'atk',atk:9,def:2,end:2,desc:'爆裂機率最高，高風險高回報',color:'#f85149',shape:'scythe',special:'burst'},
+  'Knight Shield':{name:'騎士盾牌',type:'def',atk:2,def:9,end:4,desc:'盾型設計，強力反彈攻擊',color:'#79c0ff',shape:'shield',special:'reflect'},
+  'Wizard Arrow':{name:'魔法之箭',type:'end',atk:3,def:4,end:9,desc:'持久型最強戰刃，幾乎不會轉停',color:'#56d364',shape:'arrow',special:'endure'},
+  'Cobalt Drake':{name:'蒼龍爆刃',type:'bal',atk:6,def:5,end:5,desc:'鋸齒設計，全能均衡戰刃',color:'#d29922',shape:'dragon',special:'balanced'},
+  'Leon Claw':{name:'獅王之爪',type:'atk',atk:7,def:3,end:4,desc:'爪型撕裂，連續衝擊機率高',color:'#f0883e',shape:'claw',special:'rush'},
+  'Rhino Horn':{name:'犀牛重角',type:'def',atk:3,def:8,end:5,desc:'重型防禦，碰撞反制效果強',color:'#8b949e',shape:'rhino',special:'counter'},
+  'Shark Edge':{name:'鯊魚利刃',type:'atk',atk:9,def:2,end:2,desc:'最強爆發攻擊，一擊必殺型',color:'#bc8cff',shape:'shark',special:'burst'}
+};
+
+const RATCHETS={
+  '3-60':{name:'3-60',blades:3,weight:60,atk:3,def:3,end:3,desc:'標準平衡，適合所有組合'},
+  '4-60':{name:'4-60',blades:4,weight:60,atk:4,def:4,end:2,desc:'攻擊頻率高，輕型'},
+  '5-60':{name:'5-60',blades:5,weight:60,atk:2,def:5,end:4,desc:'穩定性強，輕型'},
+  '3-70':{name:'3-70',blades:3,weight:70,atk:3,def:4,end:3,desc:'偏防禦平衡，中型'},
+  '4-70':{name:'4-70',blades:4,weight:70,atk:5,def:5,end:2,desc:'重攻擊型，中型'},
+  '5-70':{name:'5-70',blades:5,weight:70,atk:2,def:6,end:5,desc:'高穩定防禦，中型'},
+  '4-80':{name:'4-80',blades:4,weight:80,atk:5,def:6,end:2,desc:'重型攻擊，高重量'},
+  '9-60':{name:'9-60',blades:9,weight:60,atk:1,def:8,end:6,desc:'極度穩定，防禦最強固鎖'}
+};
+
+const BITS={
+  'Point':{name:'Point(P)',atk:6,def:2,end:3,mobility:'high',desc:'尖點底部，移動快，擊飛強但易轉停',special:'aggressive'},
+  'Flat':{name:'Flat(F)',atk:5,def:3,end:4,mobility:'high',desc:'平底，高速移動，攻擊頻率最高',special:'rush'},
+  'Ball':{name:'Ball(B)',atk:3,def:4,end:5,mobility:'mid',desc:'球型，穩定移動，均衡表現',special:'balanced'},
+  'Needle':{name:'Needle(N)',atk:2,def:3,end:9,mobility:'low',desc:'細針底部，幾乎不移動，持久最強',special:'endure'},
+  'Spike':{name:'Spike(S)',atk:8,def:1,end:2,mobility:'high',desc:'尖刺底部，爆發最強，極高風險',special:'burst'},
+  'Taper':{name:'Taper(T)',atk:3,def:6,end:4,mobility:'mid',desc:'錐型，防禦偏強，穩定移動',special:'defense'},
+  'Hexa':{name:'Hexa(HX)',atk:2,def:8,end:5,mobility:'low',desc:'六角底部，高防禦，反彈能力強',special:'counter'},
+  'Gear Needle':{name:'Gear Needle(GN)',atk:1,def:4,end:10,mobility:'low',desc:'齒輪針底部，持久最強之一',special:'endure'}
+};
+
+let p1={blade:null,ratchet:null,bit:null};
+let p2={blade:null,ratchet:null,bit:null};
+let selectingFor=1;
+let p1Score=0,p2Score=0;
+let animFrame=null;
+let roundRunning=false;
+
+let bey1={x:150,y:250,vx:2.5,vy:1.5,angle:0,spinSpeed:8,hp:100,alive:true,stamina:100};
+let bey2={x:350,y:250,vx:-2.5,vy:-1.5,angle:0,spinSpeed:-6,hp:100,alive:true,stamina:100};
+
+function getStats(p){
+  const b=BLADES[p.blade]||{atk:0,def:0,end:0};
+  const r=RATCHETS[p.ratchet]||{atk:0,def:0,end:0};
+  const bt=BITS[p.bit]||{atk:0,def:0,end:0};
+  return{
+    atk:Math.round((b.atk+r.atk+bt.atk)/3*10)/10,
+    def:Math.round((b.def+r.def+bt.def)/3*10)/10,
+    end:Math.round((b.end+r.end+bt.end)/3*10)/10,
+    weight:r?RATCHETS[p.ratchet]?.weight||60:60,
+    blades:r?RATCHETS[p.ratchet]?.blades||3:3,
+    mobility:bt?BITS[p.bit]?.mobility||'mid':'mid',
+    special:b.special||'balanced',
+    bitSpecial:bt?BITS[p.bit]?.special||'balanced':'balanced',
+    color:BLADES[p.blade]?.color||'#58a6ff'
+  };
+}
+
+function buildPartGrid(containerId,data,type){
+  const grid=document.getElementById(containerId);
+  grid.innerHTML='';
+  Object.entries(data).forEach(([key,part])=>{
+    const typeClass=part.type==='atk'?'type-atk':part.type==='def'?'type-def':part.type==='end'?'type-end':'type-bal';
+    const typeLabel=part.type==='atk'?'攻擊':part.type==='def'?'防禦':part.type==='end'?'持久':'平衡';
+    const card=document.createElement('div');
+    card.className='part-card';
+    card.id=`part-${type}-${key.replace(/[^a-zA-Z0-9]/g,'_')}`;
+    const atk=part.atk;const def=part.def;const end=part.end||part.end;
+    card.innerHTML=`
+      ${part.type?`<div class="part-type-badge ${typeClass}">${typeLabel}</div>`:''}
+      <div class="part-name">${part.name||key}</div>
+      <div class="part-stats">
+        <div>攻 <span class="stat-atk">${atk}</span> <div class="stat-bar-wrap"><div class="stat-bar bar-atk" style="width:${atk*10}%"></div></div></div>
+        <div>防 <span class="stat-def">${def}</span> <div class="stat-bar-wrap"><div class="stat-bar bar-def" style="width:${def*10}%"></div></div></div>
+        <div>耐 <span class="stat-end">${end}</span> <div class="stat-bar-wrap"><div class="stat-bar bar-end" style="width:${end*10}%"></div></div></div>
+        ${part.weight?`<div style="color:#8b949e;margin-top:2px">重量${part.weight} · ${part.blades}刀刃</div>`:''}
+        ${part.mobility?`<div style="color:#8b949e">移動:${part.mobility==='high'?'快':part.mobility==='mid'?'中':'慢'}</div>`:''}
+      </div>
+      <div style="font-size:10px;color:#6e7681;margin-top:4px">${part.desc}</div>`;
+    card.onclick=()=>selectPart(key,type,card);
+    grid.appendChild(card);
+  });
+}
+
+function selectPart(key,type,card){
+  const isP1Turn=!p1[type];
+  const isP2Turn=p1[type]&&!p2[type];
+  if(!isP1Turn&&!isP2Turn) return;
+  const target=isP1Turn?p1:p2;
+  target[type]=key;
+  const color=isP1Turn?'#58a6ff':'#f85149';
+  card.style.borderColor=isP1Turn?'#58a6ff':'#f85149';
+  card.style.background=isP1Turn?'#0d1f3a':'#3a0d0d';
+  updateSelectedDisplay();
+  checkReady();
+}
+
+function updateSelectedDisplay(){
+  ['p1','p2'].forEach(p=>{
+    const player=p==='p1'?p1:p2;
+    const el=document.getElementById(`${p}-selected`);
+    const statsEl=document.getElementById(`${p}-stats`);
+    if(!player.blade&&!player.ratchet&&!player.bit){
+      el.innerHTML='<span style="font-size:12px;color:#8b949e">尚未選擇零件</span>';
+      statsEl.innerHTML='';return;
+    }
+    let html='';
+    if(player.blade) html+=`<span class="selected-tag">${BLADES[player.blade].name}</span>`;
+    if(player.ratchet) html+=`<span class="selected-tag">${player.ratchet}</span>`;
+    if(player.bit) html+=`<span class="selected-tag">${player.bit}</span>`;
+    el.innerHTML=html||'<span style="font-size:12px;color:#8b949e">選擇中...</span>';
+    if(player.blade&&player.ratchet&&player.bit){
+      const s=getStats(player);
+      statsEl.innerHTML=`<div class="stat-item" style="color:#f85149">攻${s.atk}</div><div class="stat-item" style="color:#58a6ff">防${s.def}</div><div class="stat-item" style="color:#56d364">耐${s.end}</div>`;
+    }
+  });
+}
+
+function checkReady(){
+  const ready=p1.blade&&p1.ratchet&&p1.bit&&p2.blade&&p2.ratchet&&p2.bit;
+  document.getElementById('battle-btn').disabled=!ready;
+}
+
+function resetSetup(){
+  p1={blade:null,ratchet:null,bit:null};
+  p2={blade:null,ratchet:null,bit:null};
+  document.querySelectorAll('.part-card').forEach(c=>{
+    c.style.borderColor='';c.style.background='';
+  });
+  updateSelectedDisplay();
+  document.getElementById('battle-btn').disabled=true;
+}
+
+function startBattle(){
+  p1Score=0;p2Score=0;
+  document.getElementById('p1-score').textContent='0';
+  document.getElementById('p2-score').textContent='0';
+  document.getElementById('battle-log').innerHTML='';
+  showScreen('screen-battle');
+  addLog('戰鬥開始！先得4分獲勝！','log-sys');
+  drawArena();
+}
+
+function showScreen(id){
+  ['screen-setup','screen-battle','screen-result'].forEach(s=>document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function startRound(){
+  if(roundRunning) return;
+  roundRunning=true;
+  document.getElementById('round-btn').disabled=true;
+  document.getElementById('battle-log').innerHTML='';
+  const s1=getStats(p1);const s2=getStats(p2);
+  bey1={x:150,y:250,vx:2+Math.random(),vy:(Math.random()-0.5)*3,angle:0,spinSpeed:7+s1.atk*0.3,hp:100,alive:true,stamina:100,stats:s1,color:s1.color};
+  bey2={x:350,y:250,vx:-2-Math.random(),vy:(Math.random()-0.5)*3,angle:0,spinSpeed:-(6+s2.atk*0.3),hp:100,alive:true,stamina:100,stats:s2,color:s2.color};
+  addLog(`發射！${BLADES[p1.blade].name} vs ${BLADES[p2.blade].name}！`,'log-special');
+  runAnimation();
+}
+
+function runAnimation(){
+  const canvas=document.getElementById('arena');
+  const ctx=canvas.getContext('2d');
+  const W=500,H=500,R=220;
+  const CX=W/2,CY=H/2;
+  let tick=0;
+  let lastCollide=0;
+  let effectQueue=[];
+
+  function drawFrame(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+    ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);
+    ctx.fillStyle='#111122';ctx.fill();
+    ctx.strokeStyle='#30363d';ctx.lineWidth=3;ctx.stroke();
+    for(let i=1;i<=3;i++){
+      ctx.beginPath();ctx.arc(CX,CY,R*i/3,0,Math.PI*2);
+      ctx.strokeStyle='#1a1a2e';ctx.lineWidth=0.5;ctx.stroke();
+    }
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4;
+      ctx.beginPath();ctx.moveTo(CX,CY);
+      ctx.lineTo(CX+Math.cos(a)*R,CY+Math.sin(a)*R);
+      ctx.strokeStyle='#1a1a2e';ctx.lineWidth=0.5;ctx.stroke();
+    }
+
+    if(bey1.alive){
+      bey1.angle+=bey1.spinSpeed*(1+bey1.stats.atk*0.05);
+      bey1.x+=bey1.vx;bey1.y+=bey1.vy;
+      const s1=bey1.stats;
+      if(s1.mobility==='high'){bey1.vx+=(Math.random()-0.5)*0.3;bey1.vy+=(Math.random()-0.5)*0.3;}
+      else if(s1.mobility==='low'){bey1.vx*=0.98;bey1.vy*=0.98;}
+      bey1.vx=Math.max(-5,Math.min(5,bey1.vx));
+      bey1.vy=Math.max(-5,Math.min(5,bey1.vy));
+      const d1=Math.sqrt((bey1.x-CX)**2+(bey1.y-CY)**2);
+      if(d1>R-25){
+        const nx=(bey1.x-CX)/d1;const ny=(bey1.y-CY)/d1;
+        const dot=bey1.vx*nx+bey1.vy*ny;
+        bey1.vx-=2*dot*nx;bey1.vy-=2*dot*ny;
+        bey1.x=CX+nx*(R-25);bey1.y=CY+ny*(R-25);
+      }
+    }
+
+    if(bey2.alive){
+      bey2.angle+=bey2.spinSpeed*(1+bey2.stats.atk*0.05);
+      bey2.x+=bey2.vx;bey2.y+=bey2.vy;
+      const s2=bey2.stats;
+      if(s2.mobility==='high'){bey2.vx+=(Math.random()-0.5)*0.3;bey2.vy+=(Math.random()-0.5)*0.3;}
+      else if(s2.mobility==='low'){bey2.vx*=0.98;bey2.vy*=0.98;}
+      bey2.vx=Math.max(-5,Math.min(5,bey2.vx));
+      bey2.vy=Math.max(-5,Math.min(5,bey2.vy));
+      const d2=Math.sqrt((bey2.x-CX)**2+(bey2.y-CY)**2);
+      if(d2>R-25){
+        const nx=(bey2.x-CX)/d2;const ny=(bey2.y-CY)/d2;
+        const dot=bey2.vx*nx+bey2.vy*ny;
+        bey2.vx-=2*dot*nx;bey2.vy-=2*dot*ny;
+        bey2.x=CX+nx*(R-25);bey2.y=CY+ny*(R-25);
+      }
+    }
+
+    if(bey1.alive&&bey2.alive){
+      const dx=bey2.x-bey1.x;const dy=bey2.y-bey1.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<50&&tick-lastCollide>30){
+        lastCollide=tick;
+        handleCollision(dx,dy,dist,effectQueue);
+      }
+    }
+
+    if(bey1.alive){
+      bey1.stamina-=0.08/(bey1.stats.end*0.1+0.5);
+      if(bey1.stamina<=0){bey1.alive=false;effectQueue.push({type:'stop',x:bey1.x,y:bey1.y,tick:tick});}
+    }
+    if(bey2.alive){
+      bey2.stamina-=0.08/(bey2.stats.end*0.1+0.5);
+      if(bey2.stamina<=0){bey2.alive=false;effectQueue.push({type:'stop',x:bey2.x,y:bey2.y,tick:tick});}
+    }
+
+    effectQueue=effectQueue.filter(e=>{
+      const age=tick-e.tick;
+      if(age>40) return false;
+      const alpha=1-age/40;
+      if(e.type==='collision'){
+        for(let i=0;i<8;i++){
+          const a=i*Math.PI/4+age*0.1;
+          const r=age*3;
+          ctx.beginPath();ctx.arc(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r,3,0,Math.PI*2);
+          ctx.fillStyle=`rgba(255,200,0,${alpha})`;ctx.fill();
+        }
+      }else if(e.type==='burst'){
+        for(let i=0;i<12;i++){
+          const a=i*Math.PI/6;const r=age*4;
+          ctx.beginPath();ctx.moveTo(e.x,e.y);
+          ctx.lineTo(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r);
+          ctx.strokeStyle=`rgba(248,81,73,${alpha})`;ctx.lineWidth=2;ctx.stroke();
+        }
+      }else if(e.type==='fly'){
+        ctx.beginPath();
+        ctx.arc(e.x+Math.cos(e.dir)*age*6,e.y+Math.sin(e.dir)*age*6,8-age*0.2,0,Math.PI*2);
+        ctx.fillStyle=`rgba(88,166,255,${alpha})`;ctx.fill();
+        for(let i=0;i<5;i++){
+          ctx.beginPath();
+          ctx.arc(e.x+Math.cos(e.dir)*(age-i*3)*6,e.y+Math.sin(e.dir)*(age-i*3)*6,3,0,Math.PI*2);
+          ctx.fillStyle=`rgba(88,166,255,${alpha*0.5})`;ctx.fill();
+        }
+      }else if(e.type==='stop'){
+        for(let i=0;i<6;i++){
+          const a=i*Math.PI/3;const r=age*2;
+          ctx.beginPath();ctx.arc(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r,4-age*0.1,0,Math.PI*2);
+          ctx.fillStyle=`rgba(86,211,100,${alpha})`;ctx.fill();
+        }
+      }else if(e.type==='out'){
+        ctx.beginPath();ctx.arc(e.x,e.y,age*2,0,Math.PI*2);
+        ctx.strokeStyle=`rgba(210,153,34,${alpha})`;ctx.lineWidth=3;ctx.stroke();
+      }
+      return true;
+    });
+
+    if(bey1.alive) drawBey(ctx,bey1,p1,true);
+    if(bey2.alive) drawBey(ctx,bey2,p2,false);
+
+    if(bey1.alive){
+      const hpPct=bey1.stamina/100;
+      ctx.fillStyle='#21262d';ctx.fillRect(bey1.x-25,bey1.y-40,50,5);
+      ctx.fillStyle=hpPct>0.5?'#56d364':hpPct>0.25?'#d29922':'#f85149';
+      ctx.fillRect(bey1.x-25,bey1.y-40,50*hpPct,5);
+    }
+    if(bey2.alive){
+      const hpPct=bey2.stamina/100;
+      ctx.fillStyle='#21262d';ctx.fillRect(bey2.x-25,bey2.y-40,50,5);
+      ctx.fillStyle=hpPct>0.5?'#56d364':hpPct>0.25?'#d29922':'#f85149';
+      ctx.fillRect(bey2.x-25,bey2.y-40,50*hpPct,5);
+    }
+
+    tick++;
+
+    if(!bey1.alive||!bey2.alive){
+      setTimeout(()=>endRound(effectQueue),500);
+      return;
+    }
+    if(tick>900){
+      endRound(effectQueue);return;
+    }
+    animFrame=requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+}
+
+function drawBey(ctx,bey,player,isP1){
+  const s=bey.stats;
+  const r=RATCHETS[player.ratchet];
+  const b=BLADES[player.blade];
+  ctx.save();
+  ctx.translate(bey.x,bey.y);
+  ctx.rotate(bey.angle*Math.PI/180);
+  const bladeCount=r?r.blades:3;
+  const outerR=22+bladeCount*1.5;
+  const color=bey.color;
+  for(let i=0;i<bladeCount;i++){
+    const a=(i/bladeCount)*Math.PI*2;
+    ctx.save();ctx.rotate(a);
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(outerR*0.6,-8);
+    ctx.lineTo(outerR,0);
+    ctx.lineTo(outerR*0.6,8);
+    ctx.closePath();
+    ctx.fillStyle=color;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=0.5;ctx.stroke();
+    ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);
+  ctx.fillStyle='#161b22';ctx.fill();
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  const shape=b?b.shape:'default';
+  if(shape==='phoenix'){
+    ctx.beginPath();ctx.moveTo(0,-10);ctx.quadraticCurveTo(10,0,0,10);ctx.quadraticCurveTo(-10,0,0,-10);
+    ctx.fillStyle=color;ctx.fill();
+  }else if(shape==='scythe'){
+    ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*1.5);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();
+  }else if(shape==='shield'){
+    ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(8,5);ctx.lineTo(-8,5);ctx.closePath();
+    ctx.fillStyle=color;ctx.fill();
+  }else if(shape==='dragon'){
+    for(let i=0;i<3;i++){
+      const a=i*Math.PI*2/3;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*10,Math.sin(a)*10);
+      ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.stroke();
+    }
+  }else{
+    ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
+  }
+  ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);
+  ctx.fillStyle='#0d1117';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=0.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);
+  ctx.fillStyle=color;ctx.fill();
+  ctx.restore();
+}
+
+function handleCollision(dx,dy,dist,effectQueue){
+  const tick=performance.now()/16|0;
+  const nx=dx/dist;const ny=dy/dist;
+  const s1=bey1.stats;const s2=bey2.stats;
+  const collX=(bey1.x+bey2.x)/2;const collY=(bey1.y+bey2.y)/2;
+  effectQueue.push({type:'collision',x:collX,y:collY,tick:bey1.alive?800:0});
+
+  const w1=RATCHETS[p1.ratchet]?.weight||60;
+  const w2=RATCHETS[p2.ratchet]?.weight||60;
+  const weightRatio1=w1/(w1+w2);const weightRatio2=w2/(w1+w2);
+
+  const force=3+Math.random()*2;
+  bey1.vx-=nx*force*weightRatio2*1.5;
+  bey1.vy-=ny*force*weightRatio2*1.5;
+  bey2.vx+=nx*force*weightRatio1*1.5;
+  bey2.vy+=ny*force*weightRatio1*1.5;
+
+  bey1.stamina-=8*(s2.atk/s1.def)*weightRatio2;
+  bey2.stamina-=8*(s1.atk/s2.def)*weightRatio1;
+
+  const rand=Math.random();
+  const flyChance1=0.05+s1.atk*0.04+(BITS[p1.bit]?.special==='aggressive'?0.1:0)-(w1-60)*0.003;
+  const flyChance2=0.05+s2.atk*0.04+(BITS[p2.bit]?.special==='aggressive'?0.1:0)-(w2-60)*0.003;
+  const burstChance1=0.05+(BLADES[p1.blade]?.special==='burst'?0.15:0);
+  const burstChance2=0.05+(BLADES[p2.blade]?.special==='burst'?0.15:0);
+
+  if(rand<flyChance1*s2.atk/s1.def){
+    const dir=Math.atan2(bey1.vy,bey1.vx);
+    effectQueue.push({type:'fly',x:collX,y:collY,dir:dir,tick:800});
+    addLog(`💥 鳳凰飛翼！玩家一的陀螺被擊飛！<span class="effect-tag eff-fly">擊飛</span>`,'log-atk');
+    bey1.stamina-=50;
+    if(bey1.stamina<=0){bey1.alive=false;effectQueue.push({type:'fly',x:bey1.x,y:bey1.y,dir:dir,tick:800});}
+  }else if(rand<flyChance1+burstChance1){
+    effectQueue.push({type:'burst',x:collX,y:collY,tick:800});
+    addLog(`💥 爆裂！玩家一的陀螺爆裂散開！<span class="effect-tag eff-burst">爆裂</span>`,'log-atk');
+    bey1.alive=false;
+  }else if(rand>1-flyChance2*s1.atk/s2.def){
+    const dir=Math.atan2(bey2.vy,bey2.vx);
+    effectQueue.push({type:'fly',x:collX,y:collY,dir:dir,tick:800});
+    addLog(`💥 擊飛！玩家二的陀螺被擊飛！<span class="effect-tag eff-fly">擊飛</span>`,'log-atk');
+    bey2.stamina-=50;
+    if(bey2.stamina<=0){bey2.alive=false;}
+  }else if(rand>1-flyChance2-burstChance2){
+    effectQueue.push({type:'burst',x:collX,y:collY,tick:800});
+    addLog(`💥 爆裂！玩家二的陀螺爆裂散開！<span class="effect-tag eff-burst">爆裂</span>`,'log-atk');
+    bey2.alive=false;
+  }else{
+    addLog(`衝擊！兩陀螺激烈碰撞！`,'log-def');
+  }
+}
+
+function endRound(effectQueue){
+  cancelAnimationFrame(animFrame);
+  roundRunning=false;
+  let winner=0;let endType='';
+  const canvas=document.getElementById('arena');
+  const ctx=canvas.getContext('2d');
+
+  if(!bey1.alive&&!bey2.alive){
+    addLog('雙方同時停止！本局平手！','log-sys');
+    endType='draw';
+  }else if(!bey1.alive){
+    winner=2;
+    const lastEff=effectQueue[effectQueue.length-1];
+    if(lastEff?.type==='burst') endType='burst';
+    else if(lastEff?.type==='fly') endType='fly';
+    else endType='stop';
+  }else if(!bey2.alive){
+    winner=1;
+    const lastEff=effectQueue[effectQueue.length-1];
+    if(lastEff?.type==='burst') endType='burst';
+    else if(lastEff?.type==='fly') endType='fly';
+    else endType='stop';
+  }else{
+    if(bey1.stamina>bey2.stamina) winner=1;
+    else winner=2;
+    endType='stamina';
+    addLog('時間到！比較殘餘體力！','log-sys');
+  }
+
+  const endLabels={burst:'爆裂勝！',fly:'擊飛勝！',stop:'轉停勝！',out:'場外勝！',stamina:'體力勝！'};
+ const scoreMap={burst:2,fly:2,out:3,stop:1,stamina:1};
+  const points=scoreMap[endType]||1;
+
+  if(winner===1){
+    p1Score+=points;
+    addLog(`🏆 玩家一獲勝！${endLabels[endType]||''}獲得${points}分！比分：${p1Score} - ${p2Score}`,'log-special');
+  }else if(winner===2){
+    p2Score+=points;
+    addLog(`🏆 玩家二獲勝！${endLabels[endType]||''}獲得${points}分！比分：${p1Score} - ${p2Score}`,'log-special');
+  }
+
+  document.getElementById('p1-score').textContent=p1Score;
+  document.getElementById('p2-score').textContent=p2Score;
+
+  if(p1Score>=4||p2Score>=4){
+    setTimeout(()=>showFinalResult(),1000);
+  }else{
+    setTimeout(()=>{
+      document.getElementById('round-btn').disabled=false;
+      drawArena();
+    },1500);
+  }
+}
+
+function showFinalResult(){
+  showScreen('screen-result');
+  const banner=document.getElementById('result-banner');
+  const winner=document.getElementById('result-winner');
+  const detail=document.getElementById('result-detail');
+  if(p1Score>=4){
+    banner.style.background='#0d1f3a';
+    winner.style.color='#58a6ff';
+    winner.textContent='玩家一 獲勝！';
+  }else{
+    banner.style.background='#1f0d0d';
+    winner.style.color='#f85149';
+    winner.textContent='玩家二 獲勝！';
+  }
+  detail.textContent=`最終比分：${p1Score} - ${p2Score}`;
+}
+
+function drawArena(){
+  const canvas=document.getElementById('arena');
+  const ctx=canvas.getContext('2d');
+  const W=500,H=500,R=220,CX=W/2,CY=H/2;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);
+  ctx.fillStyle='#111122';ctx.fill();
+  ctx.strokeStyle='#30363d';ctx.lineWidth=3;ctx.stroke();
+  for(let i=1;i<=3;i++){
+    ctx.beginPath();ctx.arc(CX,CY,R*i/3,0,Math.PI*2);
+    ctx.strokeStyle='#1a1a2e';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  ctx.fillStyle='#8b949e';ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('按「發射！」開始這一局',CX,CY);
+}
+
+function addLog(msg,cls=''){
+  const log=document.getElementById('battle-log');
+  const d=document.createElement('div');
+  d.className='log-line '+(cls||'');
+  d.innerHTML=msg;
+  log.appendChild(d);
+  log.scrollTop=log.scrollHeight;
+}
+
+function backToSetup(){
+  cancelAnimationFrame(animFrame);
+  roundRunning=false;
+  showScreen('screen-setup');
+}
+
+function playAgain(){
+  p1Score=0;p2Score=0;
+  document.getElementById('p1-score').textContent='0';
+  document.getElementById('p2-score').textContent='0';
+  document.getElementById('battle-log').innerHTML='';
+  showScreen('screen-battle');
+  drawArena();
+  document.getElementById('round-btn').disabled=false;
+}
+
+function init(){
+  buildPartGrid('blade-grid',BLADES,'blade');
+  buildPartGrid('ratchet-grid',RATCHETS,'ratchet');
+  buildPartGrid('bit-grid',BITS,'bit');
+}
+
+document.addEventListener('DOMContentLoaded',()=>init());
+</script>
+</body>
+</html> 
