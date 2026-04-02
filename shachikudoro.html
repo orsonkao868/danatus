@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>社畜鬥螺</title>
+<title>社畜陀螺大師</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Microsoft JhengHei',sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
 body{background:#080c14;color:#e6edf3;min-height:100vh;overflow-x:hidden}
@@ -322,14 +322,14 @@ body{background:#080c14;color:#e6edf3;min-height:100vh;overflow-x:hidden}
       <button class="btn btn-gray" style="padding:2px 8px;font-size:11px" onclick="checkBladeSecret()">解鎖</button>
       <span id="blade-secret-msg" style="font-size:10px;margin-left:4px"></span>
     </div>
-    <button class="btn btn-gold btn-big" id="confirm-blade-btn" disabled onclick="showScreen('screen-parts')">確認職業 →</button>
+   <button class="btn btn-gold btn-big" id="confirm-blade-btn" disabled onclick="showScreen('screen-parts');setTimeout(()=>buildPartsSelect(),50)">確認職業 →</button>
   </div>
 </div>
 
 <!-- 零件選擇 -->
 <div id="screen-parts" class="screen">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <button class="btn btn-gray" onclick="showScreen('screen-blade')" style="padding:5px 12px">←</button>
+    <button class="btn btn-gold btn-big" id="confirm-blade-btn" disabled onclick="showScreen('screen-parts');setTimeout(()=>buildPartsSelect(),50)">確認職業 →</button>
     <div style="font-size:15px;font-weight:bold;color:#d29922">選擇固鎖與軸心</div>
   </div>
   <div class="card">
@@ -445,13 +445,1717 @@ body{background:#080c14;color:#e6edf3;min-height:100vh;overflow-x:hidden}
     <div class="coin-display" style="font-size:12px;padding:4px 10px">🪙 <span id="shop-coins">0</span></div>
   </div>
   <div class="card">
-    <div class="shop-section-title">固鎖輪盤</div>
+    <div class="shop-section-title">固鎖輪盤 <span style="font-size:11px;color:#56d364;font-weight:normal">🎁 第一個免費</span></div>
     <div class="shop-grid" id="shop-ratchet-grid"></div>
-    <div class="shop-section-title">軸心</div>
+    <div class="shop-section-title">軸心 <span style="font-size:11px;color:#56d364;font-weight:normal">🎁 第一個免費</span></div>
     <div class="shop-grid" id="shop-bit-grid"></div>
   </div>
   <button class="btn btn-gray btn-big" onclick="showScreen('screen-home')">返回主選單</button>
 </div>
+<script>
+function addBattleLogSafe(msg){
+  const log=document.getElementById('battle-log');
+  if(log){addBattleLog(msg,'log-special');}
+}
+/* ==========================================
+   存檔系統
+   ========================================== */
+function saveGame(){
+  try{
+    localStorage.setItem('beymaster_save',JSON.stringify({
+      coins:gameData.coins,
+      ownedRatchets:Array.from(gameData.ownedRatchets),
+      ownedBits:Array.from(gameData.ownedBits),
+      completedOpponents:Array.from(gameData.completedOpponents),
+      unlockedSecrets:Array.from(gameData.unlockedSecrets)
+    }));
+  }catch(e){console.log('存檔失敗',e);}
+}
+
+function loadGame(){
+  try{
+    const raw=localStorage.getItem('beymaster_save');
+    if(!raw) return;
+    const d=JSON.parse(raw);
+    gameData.coins=d.coins||0;
+    gameData.ownedRatchets=new Set(d.ownedRatchets||['3-60']);
+    gameData.ownedBits=new Set(d.ownedBits||['Ball']);
+    gameData.completedOpponents=new Set(d.completedOpponents||[]);
+    gameData.unlockedSecrets=new Set(d.unlockedSecrets||[]);
+    gameData.unlockedSecrets.forEach(k=>{if(BLADES[k]) BLADES[k].secret=false;});
+  }catch(e){console.log('讀檔失敗',e);}
+}
+
+/* ==========================================
+   遊戲資料
+   ========================================== */
+let gameData={
+  coins:0,
+  ownedRatchets:new Set(['0-60','3-60']),
+  ownedBits:new Set(['Ball']),
+  completedOpponents:new Set(),
+  unlockedSecrets:new Set(),
+  selectedBlade:null,
+  selectedRatchet:'3-60',
+  selectedBit:'Ball',
+  currentOpponent:null
+};
+
+/* ==========================================
+   職業/戰刃資料
+   ========================================== */
+const BLADES={
+  sysdown:{name:'系統崩潰',type:'atk',typeLabel:'爆發型',color:'#58a6ff',
+    atk:9,def:3,end:4,
+    desc:'工程師覺醒，Debug出必殺，一鍵崩潰對手系統',
+    skills:[
+      {name:'Debug衝撞',desc:'瞬間加速衝向對手，攻擊力+60%',cd:200,effect:'boost_atk'},
+      {name:'系統崩潰',desc:'觸發大範圍震盪，附近對手陀螺減速50%',cd:320,effect:'area_slow'}
+    ]},
+  deathcall:{name:'死亡點名',type:'ctrl',typeLabel:'控制型',color:'#bc8cff',
+    atk:6,def:5,end:7,
+    desc:'老師一怒，點名讓全場靜止，恐懼蔓延',
+    skills:[
+      {name:'點名施壓',desc:'對手減速45%持續3秒',cd:200,effect:'slow'},
+      {name:'死亡考卷',desc:'二段衝擊，每段1.2倍傷害',cd:300,effect:'double_hit'}
+    ]},
+  ironlaw:{name:'鐵壁制裁',type:'def',typeLabel:'壓制型',color:'#79c0ff',
+    atk:7,def:9,end:6,
+    desc:'警察現身，鐵壁無敵，正面硬撼天下無敵',
+    skills:[
+      {name:'鐵壁防禦',desc:'短暫無敵並反彈所有碰撞傷害',cd:250,effect:'reflect'},
+      {name:'正義制裁',desc:'蓄力衝撞，擊飛力×4',cd:340,effect:'mega_push'}
+    ]},
+  fatalpin:{name:'致命針孔',type:'stack',typeLabel:'疊層型',color:'#d2a8ff',
+    atk:5,def:5,end:9,
+    desc:'護理師連針，疊層越多越痛，第五針見閻王',
+    skills:[
+      {name:'疊針衝擊',desc:'碰撞疊加針孔層（最多5層，每層+20%傷害）',cd:160,effect:'needle'},
+      {name:'致命劑量',desc:'3層以上發動，層數×18點傷害',cd:360,effect:'needle_burst'}
+    ]},
+  blacktalk:{name:'黑心話術',type:'ctrl',typeLabel:'詐術型',color:'#ffa657',
+    atk:6,def:4,end:7,
+    desc:'業務出手，話術迷惑，讓對手方向全亂',
+    skills:[
+      {name:'話術迷惑',desc:'對手方向完全混亂持續2.5秒',cd:210,effect:'confuse'},
+      {name:'合約鎖定',desc:'永久降低對手攻擊力35%',cd:420,effect:'weaken'}
+    ]},
+  stampseal:{name:'鐵章壓頂',type:'sup',typeLabel:'增益型',color:'#e3b341',
+    atk:5,def:7,end:8,
+    desc:'官員蓋章，公文轟炸，全面強化自身戰力',
+    skills:[
+      {name:'蓋章認證',desc:'攻擊力+70%持續4秒',cd:230,effect:'boost_atk'},
+      {name:'緊急命令',desc:'對手完全停止移動2秒',cd:390,effect:'freeze'}
+    ]},
+  smilekill:{name:'微笑殺機',type:'sup',typeLabel:'補血型',color:'#56d364',
+    atk:5,def:7,end:9,
+    desc:'服務生微笑，背後藏刀，笑著讓你輸',
+    skills:[
+      {name:'回復服務',desc:'回復自身耐久35點',cd:210,effect:'heal'},
+      {name:'托盤重擊',desc:'高速衝撞，擊飛機率+50%',cd:310,effect:'fly_boost'}
+    ]},
+  hellpot:{name:'地獄火鍋',type:'dot',typeLabel:'灼傷型',color:'#f0883e',
+    atk:7,def:4,end:6,
+    desc:'廚師秘方，地溝油持續燃燒，讓對手慢慢死',
+    skills:[
+      {name:'地溝油噴射',desc:'對手持續燃燒，每秒-10耐久',cd:190,effect:'burn'},
+      {name:'超辣地獄鍋',desc:'強化燃燒-18每秒，持續5秒',cd:360,effect:'burn2'}
+    ]},
+  all007:{name:'全能007',type:'all',typeLabel:'全能型',color:'#39d353',
+    atk:7,def:7,end:7,
+    desc:'便利商店店員，24小時全能，什麼都能做',
+    skills:[
+      {name:'24小時值班',desc:'攻速防全面+35%持續5秒',cd:210,effect:'all_boost'},
+      {name:'處理所有事',desc:'對手同時陷入混亂+燃燒+減速',cd:420,effect:'all_debuff'}
+    ]},
+  keybomb:{name:'鍵盤核彈',type:'rage',typeLabel:'爆怒型',color:'#ff9966',
+    atk:8,def:2,end:5,
+    desc:'爆躁肥宅覺醒，憤怒越強傷害越高，越輸越猛',
+    skills:[
+      {name:'鍵盤狂噴',desc:'高速亂轉使對手混亂減速',cd:190,effect:'confuse'},
+      {name:'熬夜暴走',desc:'耐久越低攻擊越強，最高+120%',cd:320,effect:'rage_boost'}
+    ]},
+  hoardghost:{name:'囤貨惡靈',type:'evil',typeLabel:'陰險型',color:'#d2a8ff',
+    atk:5,def:9,end:7,
+    desc:'噁心黃牛，囤積重量，讓自己變成移動鐵壁',
+    skills:[
+      {name:'囤貨加重',desc:'大幅增加重量，被擊飛機率-70%',cd:230,effect:'heavy'},
+      {name:'黑市倒賣',desc:'隨機強效果或反傷，賭一把！',cd:360,effect:'random'}
+    ]},
+  draft999:{name:'改稿999',type:'god',typeLabel:'神級',color:'#d29922',
+    secret:true,atk:10,def:10,end:10,
+    desc:'密碼解鎖 — 改稿改到覺醒，秒天秒地無敵',
+    skills:[
+      {name:'改稿第999版',desc:'直接秒殺對手',cd:0,effect:'instant_kill'},
+      {name:'甲方已讀不回',desc:'對手放棄抵抗，耐久歸零',cd:0,effect:'instant_stop'}
+    ]},
+  special886:{name:'886特攻',type:'wild',typeLabel:'瀕死暴走',color:'#ff7b72',
+    secret:true,atk:7,def:2,end:6,
+    desc:'密碼解鎖 — 血越少越瘋狂，886同歸於盡',
+    skills:[
+      {name:'幫幫我',desc:'耐久30%以下必定爆裂對手',cd:0,effect:'low_hp_burst'},
+      {name:'886同歸於盡',desc:'雙方耐久歸零，同時結束',cd:500,effect:'kamikaze'}
+    ]}
+};
+
+/* ==========================================
+   固鎖資料
+   ========================================== */
+const RATCHETS={
+  '0-60':{name:'0-60',blades:0,weight:50,height:60,atk:1,def:2,end:5,price:0,desc:'零刀刃極輕型，光滑圓環，速度最快但攻擊力極低'},
+  '3-60':{name:'3-60',blades:3,weight:60,height:60,atk:3,def:3,end:3,price:0,desc:'初始固鎖，三刀刃輕型，標準平衡'},
+  '1-60':{name:'1-60',blades:1,weight:55,height:60,atk:2,def:2,end:4,price:80,desc:'單刀刃極輕，爆裂力強但穩定性差'},
+  '2-60':{name:'2-60',blades:2,weight:58,height:60,atk:3,def:2,end:4,price:100,desc:'雙刀刃輕型，攻擊頻率提升'},
+  '4-60':{name:'4-60',blades:4,weight:62,height:60,atk:4,def:4,end:3,price:120,desc:'四刀刃輕型，攻擊頻率高'},
+  '5-60':{name:'5-60',blades:5,weight:63,height:60,atk:3,def:5,end:4,price:140,desc:'五刀刃輕型，穩定性強'},
+  '6-60':{name:'6-60',blades:6,weight:64,height:60,atk:2,def:6,end:5,price:160,desc:'六刀刃輕型，極佳穩定'},
+  '9-60':{name:'9-60',blades:9,weight:65,height:60,atk:1,def:8,end:6,price:220,desc:'九刀刃輕型，爆裂他人最強'},
+  '1-70':{name:'1-70',blades:1,weight:65,height:70,atk:3,def:3,end:4,price:150,desc:'單刀刃中型，集中爆發'},
+  '2-70':{name:'2-70',blades:2,weight:68,height:70,atk:4,def:4,end:4,price:160,desc:'雙刀刃中型，均衡表現'},
+  '3-70':{name:'3-70',blades:3,weight:70,height:70,atk:4,def:5,end:3,price:180,desc:'三刀刃中型，偏防禦平衡'},
+  '4-70':{name:'4-70',blades:4,weight:72,height:70,atk:5,def:5,end:3,price:200,desc:'四刀刃中型，重攻擊'},
+  '5-70':{name:'5-70',blades:5,weight:73,height:70,atk:3,def:6,end:5,price:220,desc:'五刀刃中型，高穩定'},
+  '6-70':{name:'6-70',blades:6,weight:74,height:70,atk:2,def:7,end:5,price:240,desc:'六刀刃中型，強防禦'},
+  '9-70':{name:'9-70',blades:9,weight:76,height:70,atk:1,def:9,end:7,price:300,desc:'九刀刃中型，防禦怪物'},
+  '1-80':{name:'1-80',blades:1,weight:76,height:80,atk:4,def:5,end:4,price:250,desc:'單刀刃重型，集中重擊'},
+  '2-80':{name:'2-80',blades:2,weight:78,height:80,atk:5,def:6,end:3,price:270,desc:'雙刀刃重型，強力攻擊'},
+  '3-80':{name:'3-80',blades:3,weight:80,height:80,atk:4,def:6,end:4,price:290,desc:'三刀刃重型，重型平衡'},
+  '4-80':{name:'4-80',blades:4,weight:82,height:80,atk:5,def:7,end:3,price:320,desc:'四刀刃重型，最強攻擊'},
+  '5-80':{name:'5-80',blades:5,weight:83,height:80,atk:3,def:8,end:5,price:340,desc:'五刀刃重型，頂級防禦'},
+  '9-80':{name:'9-80',blades:9,weight:86,height:80,atk:1,def:10,end:7,price:400,desc:'九刀刃重型，終極鐵壁'}
+};
+
+/* ==========================================
+   軸心資料
+   ========================================== */
+const BITS={
+  'Ball':{name:'Ball (B)',atk:3,def:4,end:5,mobility:'mid',price:0,desc:'球型底部，穩定移動，均衡表現，初始配備'},
+  'Point':{name:'Point (P)',atk:6,def:2,end:3,mobility:'high',price:100,desc:'尖點底部，移動快，擊飛強但易轉停'},
+  'Flat':{name:'Flat (F)',atk:5,def:3,end:4,mobility:'high',price:120,desc:'平底，高速移動，攻擊頻率最高'},
+  'Needle':{name:'Needle (N)',atk:1,def:3,end:10,mobility:'low',price:150,desc:'細針底部，幾乎不移動，持久最強'},
+  'Spike':{name:'Spike (S)',atk:8,def:1,end:2,mobility:'high',price:180,desc:'尖刺底部，爆發最強，極高風險'},
+  'Taper':{name:'Taper (T)',atk:3,def:6,end:4,mobility:'mid',price:160,desc:'錐型底部，防禦偏強，穩定移動'},
+  'Hexa':{name:'Hexa (HX)',atk:2,def:8,end:5,mobility:'low',price:200,desc:'六角底部，高防禦，強力反彈'},
+  'GearNeedle':{name:'Gear Needle (GN)',atk:1,def:4,end:10,mobility:'low',price:250,desc:'齒輪針，終極持久型'},
+  'Rush':{name:'Rush (R)',atk:5,def:2,end:3,mobility:'high',price:180,desc:'橡膠平底，衝刺型，擊飛力強'},
+  'Orbit':{name:'Orbit (O)',atk:3,def:5,end:6,mobility:'mid',price:220,desc:'環型底部，離心力強，穩定防禦'}
+};
+
+/* ==========================================
+   35個對手資料
+   ========================================== */
+const OPPONENTS=[
+  {id:0,name:'菜鳥阿明',icon:'😅',blade:'sysdown',ratchet:'3-60',bit:'Ball',tier:1,reward:{win:30,lose:8},dialog:'我...我只是剛入門啦，請多指教！',isBoss:false},
+  {id:1,name:'辦公室小李',icon:'💼',blade:'deathcall',ratchet:'2-60',bit:'Ball',tier:1,reward:{win:35,lose:8},dialog:'下班後練習陀螺，這樣算加班嗎？',isBoss:false},
+  {id:2,name:'打卡王小美',icon:'🕐',blade:'smilekill',ratchet:'3-60',bit:'Flat',tier:1,reward:{win:38,lose:9},dialog:'準時打卡，準時贏你！',isBoss:false},
+  {id:3,name:'茶水間大叔',icon:'☕',blade:'all007',ratchet:'1-60',bit:'Ball',tier:1,reward:{win:40,lose:10},dialog:'喝杯茶再打，急什麼！',isBoss:false},
+  {id:4,name:'會議室怪人',icon:'📊',blade:'stampseal',ratchet:'3-60',bit:'Taper',tier:1,reward:{win:42,lose:10},dialog:'這場比賽需要開個會討論一下……',isBoss:false},
+  {id:5,name:'早鳥工程師',icon:'🌅',blade:'sysdown',ratchet:'2-60',bit:'Point',tier:2,reward:{win:50,lose:12},dialog:'早上五點就到公司練陀螺，你行嗎？',isBoss:false},
+  {id:6,name:'午休格鬥家',icon:'🥊',blade:'ironlaw',ratchet:'3-60',bit:'Ball',tier:2,reward:{win:52,lose:12},dialog:'午休只有一小時，我不浪費！',isBoss:false},
+  {id:7,name:'外送員阿龍',icon:'🛵',blade:'keybomb',ratchet:'4-60',bit:'Rush',tier:2,reward:{win:55,lose:13},dialog:'時速100送達，你的陀螺快嗎？',isBoss:false},
+  {id:8,name:'網購狂魔',icon:'📦',blade:'hoardghost',ratchet:'5-60',bit:'Ball',tier:2,reward:{win:58,lose:13},dialog:'我囤了一百顆陀螺，你能贏我嗎？',isBoss:false},
+  {id:9,name:'健身房猛男',icon:'💪',blade:'fatalpin',ratchet:'3-70',bit:'Flat',tier:2,reward:{win:60,lose:14},dialog:'重量訓練讓我的陀螺更有力！',isBoss:false},
+  {id:10,name:'第一關Boss：組長大人',icon:'👔',blade:'deathcall',ratchet:'4-70',bit:'Taper',tier:2,reward:{win:120,lose:20},dialog:'你想超越我？先問問組長大人答不答應！',isBoss:true},
+  {id:11,name:'超市收銀姐',icon:'🛒',blade:'all007',ratchet:'3-60',bit:'Needle',tier:3,reward:{win:65,lose:15},dialog:'每天掃幾千條條碼，手速快著呢！',isBoss:false},
+  {id:12,name:'計程車大哥',icon:'🚕',blade:'ironlaw',ratchet:'4-60',bit:'Rush',tier:3,reward:{win:68,lose:15},dialog:'開車三十年，方向感一流！',isBoss:false},
+  {id:13,name:'KTV搖滾客',icon:'🎤',blade:'keybomb',ratchet:'5-60',bit:'Point',tier:3,reward:{win:70,lose:16},dialog:'High翻天，陀螺也要嗨！',isBoss:false},
+  {id:14,name:'直播主小Q',icon:'📱',blade:'blacktalk',ratchet:'3-70',bit:'Flat',tier:3,reward:{win:72,lose:16},dialog:'直播中，輸了要道歉的哦！',isBoss:false},
+  {id:15,name:'股票達人',icon:'📈',blade:'stampseal',ratchet:'4-70',bit:'Ball',tier:3,reward:{win:75,lose:17},dialog:'投資陀螺，報酬率三倍！',isBoss:false},
+  {id:16,name:'熬夜工程師',icon:'🌙',blade:'sysdown',ratchet:'5-60',bit:'Spike',tier:3,reward:{win:78,lose:17},dialog:'程式碼debug到凌晨，眼睛還是亮的！',isBoss:false},
+  {id:17,name:'補習班老師',icon:'✏️',blade:'deathcall',ratchet:'5-70',bit:'Taper',tier:3,reward:{win:80,lose:18},dialog:'補習補到假，陀螺練到真！',isBoss:false},
+  {id:18,name:'美食外送王',icon:'🍜',blade:'hellpot',ratchet:'4-60',bit:'Rush',tier:3,reward:{win:82,lose:18},dialog:'地溝油配方絕密，打你你不知道！',isBoss:false},
+  {id:19,name:'夜市攤主',icon:'🏮',blade:'hoardghost',ratchet:'6-60',bit:'Hexa',tier:3,reward:{win:85,lose:19},dialog:'夜市打滾二十年，沒在怕的！',isBoss:false},
+  {id:20,name:'第二關Boss：主任威威',icon:'🎖️',blade:'ironlaw',ratchet:'5-70',bit:'Hexa',tier:3,reward:{win:180,lose:30},dialog:'主任出手，你還嫩著呢！',isBoss:true},
+  {id:21,name:'黑心業務王',icon:'😈',blade:'blacktalk',ratchet:'4-70',bit:'Flat',tier:4,reward:{win:90,lose:20},dialog:'話術迷魂，你已經輸了還不知道！',isBoss:false},
+  {id:22,name:'奧客終結者',icon:'😤',blade:'fatalpin',ratchet:'5-70',bit:'Needle',tier:4,reward:{win:92,lose:20},dialog:'每天對付奧客，你算什麼！',isBoss:false},
+  {id:23,name:'保全阿伯',icon:'🔒',blade:'ironlaw',ratchet:'6-70',bit:'Hexa',tier:4,reward:{win:95,lose:21},dialog:'守了三十年，沒人能突破！',isBoss:false},
+  {id:24,name:'爆肝護理師',icon:'💉',blade:'fatalpin',ratchet:'5-60',bit:'GearNeedle',tier:4,reward:{win:98,lose:21},dialog:'打針打了十萬次，手穩著呢！',isBoss:false},
+  {id:25,name:'地下廚神',icon:'🔥',blade:'hellpot',ratchet:'6-60',bit:'Spike',tier:4,reward:{win:100,lose:22},dialog:'地溝油五代秘方，燒穿你！',isBoss:false},
+  {id:26,name:'鍵盤神人',icon:'⌨️',blade:'keybomb',ratchet:'4-80',bit:'Point',tier:4,reward:{win:105,lose:22},dialog:'WPM兩百，控制陀螺靠速度！',isBoss:false},
+  {id:27,name:'囤貨大師',icon:'📦',blade:'hoardghost',ratchet:'9-60',bit:'Hexa',tier:4,reward:{win:108,lose:23},dialog:'我囤的貨比你陀螺還重！',isBoss:false},
+  {id:28,name:'官場老油條',icon:'🏛️',blade:'stampseal',ratchet:'6-70',bit:'Orbit',tier:4,reward:{win:112,lose:23},dialog:'蓋了三十年公章，你的陀螺算什麼！',isBoss:false},
+  {id:29,name:'過勞幽靈',icon:'👻',blade:'sysdown',ratchet:'5-80',bit:'GearNeedle',tier:4,reward:{win:115,lose:24},dialog:'已經死了還在上班，你能贏鬼嗎？',isBoss:false},
+  {id:30,name:'第三關Boss：局長大人',icon:'🏆',blade:'stampseal',ratchet:'9-70',bit:'Orbit',tier:4,reward:{win:250,lose:40},dialog:'局長親自出馬，你有幾條命？',isBoss:true},
+  {id:31,name:'黑道陀螺師',icon:'🔪',blade:'keybomb',ratchet:'6-80',bit:'Spike',tier:5,reward:{win:130,lose:25},dialog:'道上的規矩，輸了不能走！',isBoss:false},
+  {id:32,name:'武林盟主',icon:'🥋',blade:'ironlaw',ratchet:'9-80',bit:'Hexa',tier:5,reward:{win:140,lose:26},dialog:'武林至尊，陀螺天下！',isBoss:false},
+  {id:33,name:'財閥千金',icon:'💎',blade:'all007',ratchet:'5-80',bit:'Orbit',tier:5,reward:{win:150,lose:27},dialog:'輸了也無所謂，我有錢重來！',isBoss:false},
+  {id:34,name:'最終Boss：社畜陀螺帝王',icon:'👑',blade:'all007',ratchet:'9-80',bit:'GearNeedle',tier:5,reward:{win:500,lose:60},dialog:'你能打敗所有社畜，但能打敗命運嗎？這場就是你的命運！',isBoss:true}
+];
+
+/* ==========================================
+   SVG/Canvas 陀螺繪製
+   ========================================== */
+function getBeyRadius(ratchetKey){
+  const r=RATCHETS[ratchetKey];
+  if(!r) return 22;
+  return 18+(r.blades*1.8)+((r.weight-55)*0.2);
+}
+
+function drawBeyOnCanvas(ctx,cx,cy,bladeKey,ratchetKey,bitKey,angle,size,options={}){
+  const b=BLADES[bladeKey];
+  const r=RATCHETS[ratchetKey||'3-60'];
+  const bt=BITS[bitKey||'Ball'];
+  if(!b) return;
+  const color=options.color||b.color||'#58a6ff';
+  const radius=size||getBeyRadius(ratchetKey||'3-60');
+  const blades=r?r.blades:3;
+  const height=r?r.height:60;
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle||0);
+  const glowColor=color;
+  ctx.shadowColor=glowColor;
+  ctx.shadowBlur=options.glow?12:0;
+  for(let i=0;i<blades;i++){
+    const a=(i/blades)*Math.PI*2;
+    ctx.save();
+    ctx.rotate(a);
+    ctx.beginPath();
+    const bw=height===60?8:height===70?6:5;
+    ctx.moveTo(0,-bw*0.6);
+    ctx.lineTo(radius,0);
+    ctx.lineTo(0,bw*0.6);
+    ctx.closePath();
+    ctx.fillStyle=color;
+    ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.2)';
+    ctx.lineWidth=0.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+  const innerR=radius*0.55;
+  const type=b.type;
+  ctx.shadowBlur=0;
+  ctx.beginPath();
+  ctx.arc(0,0,innerR,0,Math.PI*2);
+  ctx.fillStyle='#080c14';
+  ctx.fill();
+  ctx.strokeStyle=color;
+  ctx.lineWidth=2;
+  ctx.stroke();
+  ctx.fillStyle=color;
+  if(type==='atk'||type==='rage'){
+    ctx.beginPath();
+    for(let i=0;i<4;i++){
+      const a=i*Math.PI/2;
+      const r1=innerR*0.85;const r2=innerR*0.35;
+      if(i===0) ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+      else ctx.lineTo(Math.cos(a)*r1,Math.sin(a)*r1);
+      ctx.lineTo(Math.cos(a+Math.PI/4)*r2,Math.sin(a+Math.PI/4)*r2);
+    }
+    ctx.closePath();ctx.fill();
+  }else if(type==='def'||type==='evil'){
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;const r1=i%2===0?innerR*0.82:innerR*0.45;
+      if(i===0) ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+      else ctx.lineTo(Math.cos(a)*r1,Math.sin(a)*r1);
+    }
+    ctx.closePath();ctx.fill();
+  }else if(type==='ctrl'||type==='sup'){
+    ctx.beginPath();
+    for(let i=0;i<3;i++){
+      const a=i*Math.PI*2/3-Math.PI/2;const r1=innerR*0.8;
+      if(i===0) ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+      else ctx.lineTo(Math.cos(a)*r1,Math.sin(a)*r1);
+    }
+    ctx.closePath();ctx.fill();
+  }else if(type==='stack'){
+    ctx.beginPath();
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5-Math.PI/2;
+      const r1=i%2===0?innerR*0.82:innerR*0.4;
+      if(i===0) ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+      else ctx.lineTo(Math.cos(a)*r1,Math.sin(a)*r1);
+    }
+    ctx.closePath();ctx.fill();
+  }else if(type==='dot'){
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a)*innerR*0.55,Math.sin(a)*innerR*0.55,innerR*0.18,0,Math.PI*2);
+      ctx.fill();
+    }
+  }else if(type==='god'){
+    ctx.beginPath();
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4;const r1=i%2===0?innerR*0.84:innerR*0.38;
+      if(i===0) ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+      else ctx.lineTo(Math.cos(a)*r1,Math.sin(a)*r1);
+    }
+    ctx.closePath();ctx.fill();
+  }else if(type==='wild'){
+    ctx.beginPath();
+    ctx.arc(0,0,innerR*0.75,0,Math.PI*1.6);
+    ctx.lineTo(0,0);
+    ctx.closePath();ctx.fill();
+  }else if(type==='all'){
+    ctx.beginPath();ctx.arc(0,0,innerR*0.75,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#080c14';
+    ctx.beginPath();ctx.arc(0,0,innerR*0.4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=color;
+    ctx.beginPath();ctx.arc(0,0,innerR*0.18,0,Math.PI*2);ctx.fill();
+  }else{
+    ctx.beginPath();ctx.arc(0,0,innerR*0.7,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#050810';
+  ctx.beginPath();ctx.arc(0,0,innerR*0.22,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(0,0,innerR*0.1,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+/* ==========================================
+   UI 工具函式
+   ========================================== */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById(id);
+  if(el){el.classList.add('active');window.scrollTo(0,0);}
+}
+
+function updateAllCoins(){
+  const c=gameData.coins;
+  ['home-coins','league-coins','shop-coins'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=c;
+  });
+}
+
+function getComputedStats(bladeKey,ratchetKey,bitKey){
+  const b=BLADES[bladeKey];
+  const r=RATCHETS[ratchetKey||'3-60'];
+  const bt=BITS[bitKey||'Ball'];
+  if(!b||!r||!bt) return null;
+  return{
+    atk:parseFloat(((b.atk*3+r.atk+bt.atk)/5).toFixed(1)),
+    def:parseFloat(((b.def+r.def*2+bt.def*2)/5).toFixed(1)),
+    end:parseFloat(((b.end+r.end+bt.end*3)/5).toFixed(1)),
+    weight:r.weight,
+    height:r.height,
+    blades:r.blades,
+    mobility:bt.mobility,
+    color:b.color,
+    stamina:75+r.end*3+bt.end*6,
+    burstPower:(10-r.height/10)*1.5,
+    burstResist:r.height/10
+  };
+}
+
+/* ==========================================
+   主頁動畫
+   ========================================== */
+let heroAngle=0;
+function animateHero(){
+  const canvas=document.getElementById('hero-canvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,280,160);
+  ctx.fillStyle='#080c14';ctx.fillRect(0,0,280,160);
+  heroAngle+=0.04;
+  const bladeKeys=Object.keys(BLADES).filter(k=>!BLADES[k].secret);
+  const positions=[
+    {x:70,y:80,blade:bladeKeys[0]||'sysdown',r:'3-60',b:'Ball',size:28,speed:1.2},
+    {x:140,y:80,blade:bladeKeys[4]||'stampseal',r:'4-70',b:'Flat',size:32,speed:-0.9},
+    {x:210,y:80,blade:bladeKeys[8]||'all007',r:'5-60',b:'Orbit',size:28,speed:1.0}
+  ];
+  positions.forEach(p=>{
+    drawBeyOnCanvas(ctx,p.x,p.y,p.blade,p.r,p.b,heroAngle*p.speed,p.size,{glow:true});
+  });
+  requestAnimationFrame(animateHero);
+}
+
+/* ==========================================
+   職業選擇
+   ========================================== */
+function buildBladeSelectGrid(){
+  const grid=document.getElementById('blade-select-grid');
+  if(!grid) return;
+  grid.innerHTML='';
+  const typeTagMap={atk:'tag-atk',def:'tag-def',end:'tag-end',ctrl:'tag-ctrl',dot:'tag-dot',stack:'tag-stack',all:'tag-all',god:'tag-god',wild:'tag-wild',rage:'tag-rage',evil:'tag-evil',sup:'tag-def'};
+  Object.entries(BLADES).forEach(([key,b])=>{
+    if(b.secret) return;
+    const isSelected=gameData.selectedBlade===key;
+    const div=document.createElement('div');
+    div.className=`blade-card${isSelected?' selected':''}`;
+    div.id=`bcard-${key}`;
+    const canvas=document.createElement('canvas');
+    canvas.width=56;canvas.height=56;
+    canvas.style.cssText='border-radius:50%;background:#080c14';
+    div.innerHTML=`
+      <div class="blade-canvas-wrap"></div>
+      <div class="blade-name-small" style="color:${b.color}">${b.name}</div>
+      <div><span class="blade-type-tag ${typeTagMap[b.type]||'tag-atk'}">${b.typeLabel}</span></div>
+      <div class="blade-stat-mini">
+        <span style="color:#f85149">${b.atk}</span>
+        <span style="color:#58a6ff">${b.def}</span>
+        <span style="color:#56d364">${b.end}</span>
+      </div>`;
+    div.querySelector('.blade-canvas-wrap').appendChild(canvas);
+    const ctx=canvas.getContext('2d');
+    drawBeyOnCanvas(ctx,28,28,key,'3-60','Ball',0,22,{glow:false});
+    div.onclick=()=>selectBlade(key);
+    grid.appendChild(div);
+  });
+}
+
+function selectBlade(key){
+  gameData.selectedBlade=key;
+  document.querySelectorAll('.blade-card').forEach(c=>c.classList.remove('selected'));
+  const card=document.getElementById(`bcard-${key}`);
+  if(card) card.classList.add('selected');
+  document.getElementById('confirm-blade-btn').disabled=false;
+  showBladeDetail(key);
+}
+
+function showBladeDetail(key){
+  const b=BLADES[key];if(!b) return;
+  const box=document.getElementById('blade-detail-box');
+  if(box) box.classList.remove('hidden');
+  const nameEl=document.getElementById('blade-detail-name');
+  const descEl=document.getElementById('blade-detail-desc');
+  const skillsEl=document.getElementById('blade-detail-skills');
+  const canvasEl=document.getElementById('blade-detail-canvas');
+  if(nameEl) nameEl.textContent=b.name;
+  if(nameEl) nameEl.style.color=b.color;
+  if(descEl) descEl.textContent=b.desc;
+  if(canvasEl){
+    const ctx=canvasEl.getContext('2d');
+    ctx.clearRect(0,0,64,64);
+    ctx.fillStyle='#080c14';ctx.fillRect(0,0,64,64);
+    drawBeyOnCanvas(ctx,32,32,key,'3-60','Ball',0,26,{glow:true});
+  }
+  if(skillsEl){
+    skillsEl.innerHTML=b.skills.map(s=>`
+      <div class="skill-item">
+        <div class="skill-item-name">${s.name}</div>
+        <div class="skill-item-desc">${s.desc}</div>
+        <div class="skill-item-cd">冷卻：${s.cd===0?'無限制':Math.round(s.cd/60)+'秒'}</div>
+      </div>`).join('');
+  }
+}
+
+function checkBladeSecret(){
+  const code=document.getElementById('blade-secret-input').value;
+  const msg=document.getElementById('blade-secret-msg');
+  if(code==='86888'&&BLADES.draft999.secret){
+    BLADES.draft999.secret=false;
+    gameData.unlockedSecrets.add('draft999');
+    saveGame();
+    msg.style.color='#d29922';msg.textContent='🎨 改稿999解鎖！';
+    buildBladeSelectGrid();
+  }else if(code==='O868'&&BLADES.special886.secret){
+    BLADES.special886.secret=false;
+    gameData.unlockedSecrets.add('special886');
+    saveGame();
+    msg.style.color='#ff7b72';msg.textContent='🆘 886特攻解鎖！';
+    buildBladeSelectGrid();
+  }else{
+    msg.style.color='#f85149';msg.textContent='密碼錯誤';
+  }
+}
+
+/* ==========================================
+   零件選擇
+   ========================================== */
+function buildPartsSelect(){
+  buildRatchetScroll();
+  buildBitScroll();
+  updatePartsPreview();
+}
+
+function buildRatchetScroll(){
+  const scroll=document.getElementById('ratchet-scroll');
+  if(!scroll) return;
+  scroll.innerHTML='';
+  Object.entries(RATCHETS).forEach(([key,r])=>{
+    const owned=gameData.ownedRatchets.has(key);
+    const isSelected=gameData.selectedRatchet===key;
+    const div=document.createElement('div');
+    div.className=`part-chip${isSelected?' selected':''}${!owned?' locked':''}`;
+    div.innerHTML=`
+      <div class="part-chip-name">${r.name}</div>
+      <div class="part-chip-stat">刀刃${r.blades} 重${r.weight} 高${r.height}</div>
+      <div class="part-chip-stat" style="color:#f85149">攻${r.atk} <span style="color:#58a6ff">防${r.def}</span> <span style="color:#56d364">耐${r.end}</span></div>
+      ${!owned?`<div class="part-chip-price">🛒 ${r.price}幣</div>`:''}`;
+    if(owned) div.onclick=()=>selectRatchet(key);
+    else div.onclick=()=>alert(`尚未購買！請前往商店購買（${r.price}金幣）`);
+    scroll.appendChild(div);
+  });
+}
+
+function buildBitScroll(){
+  const scroll=document.getElementById('bit-scroll');
+  if(!scroll) return;
+  scroll.innerHTML='';
+  Object.entries(BITS).forEach(([key,bt])=>{
+    const owned=gameData.ownedBits.has(key);
+    const isSelected=gameData.selectedBit===key;
+    const mobLabel=bt.mobility==='high'?'快速':bt.mobility==='mid'?'中速':'慢速';
+    const div=document.createElement('div');
+    div.className=`part-chip${isSelected?' selected':''}${!owned?' locked':''}`;
+    div.innerHTML=`
+      <div class="part-chip-name">${bt.name}</div>
+      <div class="part-chip-stat">移動：${mobLabel}</div>
+      <div class="part-chip-stat" style="color:#f85149">攻${bt.atk} <span style="color:#58a6ff">防${bt.def}</span> <span style="color:#56d364">耐${bt.end}</span></div>
+      ${!owned?`<div class="part-chip-price">🛒 ${bt.price}幣</div>`:''}`;
+    if(owned) div.onclick=()=>selectBit(key);
+    else div.onclick=()=>alert(`尚未購買！請前往商店購買（${bt.price}金幣）`);
+    scroll.appendChild(div);
+  });
+}
+
+function selectRatchet(key){
+  gameData.selectedRatchet=key;
+  document.querySelectorAll('#ratchet-scroll .part-chip').forEach(c=>c.classList.remove('selected'));
+  const chips=document.querySelectorAll('#ratchet-scroll .part-chip');
+  const idx=Object.keys(RATCHETS).indexOf(key);
+  if(chips[idx]) chips[idx].classList.add('selected');
+  updatePartsPreview();
+}
+
+function selectBit(key){
+  gameData.selectedBit=key;
+  document.querySelectorAll('#bit-scroll .part-chip').forEach(c=>c.classList.remove('selected'));
+  const chips=document.querySelectorAll('#bit-scroll .part-chip');
+  const idx=Object.keys(BITS).indexOf(key);
+  if(chips[idx]) chips[idx].classList.add('selected');
+  updatePartsPreview();
+}
+
+function updatePartsPreview(){
+  const blade=gameData.selectedBlade;
+  const ratchet=gameData.selectedRatchet;
+  const bit=gameData.selectedBit;
+  const canvas=document.getElementById('bey-preview-canvas');
+  const statsEl=document.getElementById('bey-preview-stats');
+  const confirmBtn=document.getElementById('confirm-parts-btn');
+  if(canvas&&blade){
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,80,80);
+    ctx.fillStyle='#080c14';ctx.fillRect(0,0,80,80);
+    drawBeyOnCanvas(ctx,40,40,blade,ratchet,bit,0,32,{glow:true});
+  }
+  if(blade&&ratchet&&bit){
+    const s=getComputedStats(blade,ratchet,bit);
+    const b=BLADES[blade];
+    const r=RATCHETS[ratchet];
+    const bt=BITS[bit];
+    const mobLabel=bt.mobility==='high'?'快速':bt.mobility==='mid'?'中速':'慢速';
+    if(statsEl){
+      statsEl.innerHTML=`
+        <div style="font-size:12px;font-weight:bold;color:${b.color};margin-bottom:6px">${b.name} / ${ratchet} / ${bt.name}</div>
+        <div class="bey-stat-row"><div class="bey-stat-label">攻擊</div><div class="bey-stat-bar-bg"><div class="bey-stat-bar-fg bar-atk" style="width:${s.atk*10}%;background:#f85149"></div></div><div class="bey-stat-val" style="color:#f85149">${s.atk}</div></div>
+        <div class="bey-stat-row"><div class="bey-stat-label">防禦</div><div class="bey-stat-bar-bg"><div class="bey-stat-bar-fg" style="width:${s.def*10}%;background:#58a6ff"></div></div><div class="bey-stat-val" style="color:#58a6ff">${s.def}</div></div>
+        <div class="bey-stat-row"><div class="bey-stat-label">耐久</div><div class="bey-stat-bar-bg"><div class="bey-stat-bar-fg" style="width:${s.end*10}%;background:#56d364"></div></div><div class="bey-stat-val" style="color:#56d364">${s.end}</div></div>
+        <div style="font-size:10px;color:#8b949e;margin-top:4px">重量${r.weight} · 高度${r.height} · 移動${mobLabel} · 耐久值${s.stamina}</div>`;
+    }
+    if(confirmBtn) confirmBtn.disabled=false;
+  }
+}
+
+/* ==========================================
+   聯賽地圖
+   ========================================== */
+function buildLeagueMap(){
+  const map=document.getElementById('league-map');
+  if(!map) return;
+  map.innerHTML='';
+  OPPONENTS.forEach((opp,i)=>{
+    const completed=gameData.completedOpponents.has(i);
+    const prevCompleted=i===0||gameData.completedOpponents.has(i-1);
+    const available=prevCompleted||completed;
+    const node=document.createElement('div');
+    let cls='opp-node';
+    if(opp.isBoss) cls+=' boss-node';
+    if(completed) cls+=' completed';
+    else if(available) cls+=' available';
+    else cls+=' locked';
+    node.className=cls;
+    const canvas=document.createElement('canvas');
+    canvas.width=36;canvas.height=36;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#080c14';ctx.fillRect(0,0,36,36);
+    drawBeyOnCanvas(ctx,18,18,opp.blade,opp.ratchet,opp.bit,0,14,{glow:opp.isBoss});
+    node.innerHTML=`
+      <div class="node-canvas-wrap"></div>
+      <div class="node-name">${opp.name}</div>
+      <div class="node-reward">${opp.isBoss?'👑':'🪙'}${opp.reward.win}</div>
+      ${completed?'<div class="node-check">✅</div>':''}`;
+    node.querySelector('.node-canvas-wrap').appendChild(canvas);
+   if(available) node.onclick=()=>goToPrefight(i);
+    map.appendChild(node);
+  });
+}
+
+function goToPrefight(oppIdx){
+  const opp=OPPONENTS[oppIdx];
+  gameData.currentOpponent=oppIdx;
+  const canvas=document.getElementById('prefight-canvas');
+  const portraitCanvas=document.getElementById('prefight-portrait');
+  if(canvas){
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,160,160);
+    ctx.fillStyle='#0d1117';ctx.fillRect(0,0,160,160);
+    let angle=0;
+    function spin(){
+      ctx.clearRect(0,0,160,160);
+      ctx.fillStyle='#0d1117';ctx.fillRect(0,0,160,160);
+      angle+=0.05;
+      drawBeyOnCanvas(ctx,80,80,opp.blade,opp.ratchet,opp.bit,angle,55,{glow:true});
+      if(document.getElementById('screen-prefight')?.classList.contains('active')){
+        requestAnimationFrame(spin);
+      }
+    }
+    spin();
+  }
+  if(portraitCanvas){
+    const ctx=portraitCanvas.getContext('2d');
+    ctx.clearRect(0,0,44,44);
+    ctx.fillStyle='#0a0f1a';ctx.fillRect(0,0,44,44);
+    drawBeyOnCanvas(ctx,22,22,opp.blade,opp.ratchet,opp.bit,0,16,{});
+  }
+  const speechEl=document.getElementById('prefight-speech');
+  const infoEl=document.getElementById('prefight-info');
+  if(speechEl) speechEl.textContent=`${opp.icon} 「${opp.dialog}」`;
+  if(infoEl){
+    const s=getComputedStats(opp.blade,opp.ratchet,opp.bit);
+    const r=RATCHETS[opp.ratchet];
+    infoEl.innerHTML=`
+      對手：${opp.name}<br>
+      陀螺：${BLADES[opp.blade].name} / ${opp.ratchet} / ${BITS[opp.bit].name}<br>
+      攻擊 ${s?.atk||'?'} · 防禦 ${s?.def||'?'} · 耐久 ${s?.end||'?'}<br>
+      勝利獎勵：🪙${opp.reward.win} ／ 失敗安慰：🪙${opp.reward.lose}`;
+  }
+  showScreen('screen-prefight');
+}
+
+/* ==========================================
+   商店
+   ========================================== */
+function buildShop(){
+  buildShopRatchets();
+  buildShopBits();
+  updateAllCoins();
+}
+
+function buildShopRatchets(){
+  const grid=document.getElementById('shop-ratchet-grid');
+  if(!grid) return;
+  grid.innerHTML='';
+  Object.entries(RATCHETS).forEach(([key,r])=>{
+    if(r.price===0&&gameData.ownedRatchets.has(key)) return;
+    const owned=gameData.ownedRatchets.has(key);
+    const firstFree=gameData.ownedRatchets.size<=2;
+    const canAfford=firstFree||(gameData.coins>=r.price);
+    const div=document.createElement('div');
+    div.className=`shop-card${owned?' owned':canAfford?' buyable':' cant'}`;
+    div.innerHTML=`
+      <div class="shop-card-name">${r.name}</div>
+      <div class="shop-card-stat">刀刃${r.blades} · 重量${r.weight} · 高度${r.height}<br>攻${r.atk} 防${r.def} 耐${r.end}<br>${r.desc}</div>
+      ${owned?'<div class="shop-card-owned">✅ 已擁有</div>':`<div class="shop-card-price">🪙 ${r.price}</div>`}`;
+    if(!owned&&canAfford) div.onclick=()=>buyRatchet(key);
+    grid.appendChild(div);
+  });
+}
+
+function buildShopBits(){
+  const grid=document.getElementById('shop-bit-grid');
+  if(!grid) return;
+  grid.innerHTML='';
+  Object.entries(BITS).forEach(([key,bt])=>{
+    if(bt.price===0&&gameData.ownedBits.has(key)) return;
+    const owned=gameData.ownedBits.has(key);
+    const firstFree=gameData.ownedBits.size<=1;
+    const canAfford=firstFree||(gameData.coins>=bt.price);
+    const mobLabel=bt.mobility==='high'?'快速':bt.mobility==='mid'?'中速':'慢速';
+    const div=document.createElement('div');
+    div.className=`shop-card${owned?' owned':canAfford?' buyable':' cant'}`;
+    div.innerHTML=`
+      <div class="shop-card-name">${bt.name}</div>
+      <div class="shop-card-stat">移動：${mobLabel}<br>攻${bt.atk} 防${bt.def} 耐${bt.end}<br>${bt.desc}</div>
+      ${owned?'<div class="shop-card-owned">✅ 已擁有</div>':`<div class="shop-card-price">🪙 ${bt.price}</div>`}`;
+    if(!owned&&canAfford) div.onclick=()=>buyBit(key);
+    grid.appendChild(div);
+  });
+}
+
+function buyRatchet(key){
+  const r=RATCHETS[key];
+  if(!r||gameData.ownedRatchets.has(key)) return;
+  const firstFree=gameData.ownedRatchets.size<=2;
+  if(!firstFree&&gameData.coins<r.price){alert('金幣不足！');return;}
+  if(!firstFree) gameData.coins-=r.price;
+  else addBattleLogSafe(`🎁 新手優惠！第一個固鎖免費！`);
+  gameData.ownedRatchets.add(key);
+  saveGame();
+  updateAllCoins();
+  buildShop();
+}
+
+function buyBit(key){
+  const bt=BITS[key];
+  if(!bt||gameData.ownedBits.has(key)) return;
+  const firstFree=gameData.ownedBits.size<=1;
+  if(!firstFree&&gameData.coins<bt.price){alert('金幣不足！');return;}
+  if(!firstFree) gameData.coins-=bt.price;
+  else addBattleLogSafe(`🎁 新手優惠！第一個軸心免費！`);
+  gameData.ownedBits.add(key);
+  saveGame();
+  updateAllCoins();
+  buildShop();
+}
+
+/* ==========================================
+   導航函式
+   ========================================== */
+function goToBlade(){
+  if(!gameData.selectedBlade) gameData.selectedBlade=null;
+  buildBladeSelectGrid();
+  showScreen('screen-blade');
+}
+
+function goToLeague(){
+  if(!gameData.selectedBlade){
+    goToBlade();return;
+  }
+  buildLeagueMap();
+  updateAllCoins();
+  showScreen('screen-league');
+}
+
+function goToShop(){
+  buildShop();
+  showScreen('screen-shop');
+}
+
+/* ==========================================
+   初始化
+   ========================================== */
+function init(){
+  loadGame();
+  updateAllCoins();
+  animateHero();
+  buildBladeSelectGrid();
+}
+
+document.addEventListener('DOMContentLoaded',()=>init());
+</script>
+<script>
+/* ==========================================
+   戰鬥引擎
+   ========================================== */
+let battleState={
+  running:false,
+  animFrame:null,
+  tick:0,
+  p1Score:0,
+  p2Score:0,
+  roundActive:false,
+  keys:{},
+  joystick:{x:0,y:0,active:false},
+  needleStacks:0,
+  oppNeedleStacks:0,
+  skillCd:0,
+  oppSkillCd:0,
+  lastCollide:0,
+  effects:[],
+  p1:{},
+  p2:{}
+};
+
+const ARENA_W=360,ARENA_H=360,ARENA_CX=180,ARENA_CY=180,ARENA_R=160;
+const ACCEL_ZONES=[
+  {cx:ARENA_CX-70,cy:ARENA_CY-50,r:28},
+  {cx:ARENA_CX+70,cy:ARENA_CY+50,r:28}
+];
+
+function startBattle(){
+  const oppIdx=gameData.currentOpponent;
+  const opp=OPPONENTS[oppIdx];
+  const ps=getComputedStats(gameData.selectedBlade,gameData.selectedRatchet,gameData.selectedBit);
+  const es=getComputedStats(opp.blade,opp.ratchet,opp.bit);
+  const b1=BLADES[gameData.selectedBlade];
+  const b2=BLADES[opp.blade];
+
+  battleState.p1Score=0;
+  battleState.p2Score=0;
+  battleState.needleStacks=0;
+  battleState.oppNeedleStacks=0;
+  battleState.skillCd=0;
+  battleState.oppSkillCd=0;
+  battleState.effects=[];
+  battleState.keys={};
+  battleState.joystick={x:0,y:0,active:false};
+  battleState.running=true;
+  battleState.roundActive=false;
+  battleState.tick=0;
+
+  document.getElementById('b-p1-name').textContent=b1.name;
+  document.getElementById('b-p2-name').textContent=b2.name;
+  document.getElementById('b-p1-score').textContent='0';
+  document.getElementById('b-p2-score').textContent='0';
+  document.getElementById('skill-circle-label').textContent=b1.skills[0].name.slice(0,4);
+  document.getElementById('battle-log').innerHTML='';
+
+  setupKeyboard();
+  setupJoystick();
+  showScreen('screen-battle');
+  drawArenaStatic();
+  addBattleLog(`⚔️ ${b1.name} vs ${b2.name} 開戰！先得4分獲勝！`,'log-special');
+  document.getElementById('launch-circle-btn').disabled=false;
+}
+
+function triggerLaunch(){
+  if(battleState.roundActive) return;
+  launchRound();
+}
+
+function launchRound(){
+  if(battleState.roundActive) return;
+  battleState.roundActive=true;
+  battleState.tick=0;
+  battleState.effects=[];
+  battleState.lastCollide=0;
+  battleState.needleStacks=0;
+  battleState.oppNeedleStacks=0;
+  battleState.skillCd=0;
+  battleState.oppSkillCd=0;
+  document.getElementById('launch-circle-btn').disabled=true;
+
+  const oppIdx=gameData.currentOpponent;
+  const opp=OPPONENTS[oppIdx];
+  const ps=getComputedStats(gameData.selectedBlade,gameData.selectedRatchet,gameData.selectedBit);
+  const es=getComputedStats(opp.blade,opp.ratchet,opp.bit);
+
+  const p1spin=Math.random()<0.5?1:-1;
+  const p2spin=Math.random()<0.5?1:-1;
+
+  battleState.p1={
+    x:ARENA_CX-80,y:ARENA_CY,
+    vx:1.8+Math.random()*0.5,vy:(Math.random()-0.5)*1.5,
+    angle:0,spin:p1spin,spinSpeed:(5+ps.atk*0.3)*p1spin,
+    stamina:ps.stamina,maxStamina:ps.stamina,
+    stats:ps,bladeKey:gameData.selectedBlade,
+    ratchetKey:gameData.selectedRatchet,bitKey:gameData.selectedBit,
+    alive:true,effects:{},onAccel:false,
+    weight:RATCHETS[gameData.selectedRatchet]?.weight||60,
+    height:RATCHETS[gameData.selectedRatchet]?.height||60
+  };
+
+  battleState.p2={
+    x:ARENA_CX+80,y:ARENA_CY,
+    vx:-(1.8+Math.random()*0.5),vy:(Math.random()-0.5)*1.5,
+    angle:0,spin:p2spin,spinSpeed:(4.5+es.atk*0.3)*p2spin,
+    stamina:es.stamina,maxStamina:es.stamina,
+    stats:es,bladeKey:opp.blade,
+    ratchetKey:opp.ratchet,bitKey:opp.bit,
+    alive:true,effects:{},onAccel:false,
+    weight:RATCHETS[opp.ratchet]?.weight||60,
+    height:RATCHETS[opp.ratchet]?.height||60
+  };
+
+  addBattleLog(`🚀 發射！轉向：玩家${p1spin>0?'順':'逆'}時針 對手${p2spin>0?'順':'逆'}時針`,'log-sys');
+
+  updateBattleHPBars();
+  runBattleLoop();
+}
+
+function runBattleLoop(){
+  const canvas=document.getElementById('battle-canvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+
+  function loop(){
+    if(!battleState.roundActive){return;}
+    battleState.tick++;
+    updateBattlePhysics();
+    renderBattleFrame(ctx);
+    if(!battleState.p1.alive||!battleState.p2.alive){
+      battleState.roundActive=false;
+      setTimeout(()=>endRound(),500);
+      return;
+    }
+    battleState.animFrame=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+function updateBattlePhysics(){
+  const p1=battleState.p1;
+  const p2=battleState.p2;
+  const t=battleState.tick;
+
+  /* 玩家輸入 */
+  const jx=battleState.joystick.x;
+  const jy=battleState.joystick.y;
+  const spd=p1.stats.mobility==='high'?0.45:p1.stats.mobility==='mid'?0.32:0.18;
+  const maxSpd=p1.stats.mobility==='high'?5.5:p1.stats.mobility==='mid'?4.0:2.5;
+
+  if(!p1.effects.freeze&&!p1.effects.confuse){
+    if(battleState.keys['KeyW']||jy<-0.2) p1.vy-=spd;
+    if(battleState.keys['KeyS']||jy>0.2) p1.vy+=spd;
+    if(battleState.keys['KeyA']||jx<-0.2) p1.vx-=spd;
+    if(battleState.keys['KeyD']||jx>0.2) p1.vx+=spd;
+  }else if(p1.effects.confuse){
+    if(battleState.keys['KeyW']||jy<-0.2) p1.vy+=spd;
+    if(battleState.keys['KeyS']||jy>0.2) p1.vy-=spd;
+    if(battleState.keys['KeyA']||jx<-0.2) p1.vx+=spd;
+    if(battleState.keys['KeyD']||jx>0.2) p1.vx-=spd;
+  }
+
+  /* 高低差：中心高台向外推力 */
+  function applySlope(b){
+    const dx=b.x-ARENA_CX;const dy=b.y-ARENA_CY;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    if(d<ARENA_R*0.35){
+      const slopeFactor=b.weight<70?0.06:0.03;
+      b.vx+=dx/d*slopeFactor;b.vy+=dy/d*slopeFactor;
+    }
+  }
+  if(p1.alive) applySlope(p1);
+  if(p2.alive) applySlope(p2);
+
+  /* AI控制 */
+  updateAI(p2,p1,t);
+
+  /* 加速帶 */
+  function checkAccelZone(b){
+    let onAccel=false;
+    ACCEL_ZONES.forEach(z=>{
+      const dx=b.x-z.cx;const dy=b.y-z.cy;
+      if(Math.sqrt(dx*dx+dy*dy)<z.r){
+        onAccel=true;
+        const spd=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+        if(spd>0.1){b.vx*=1.04;b.vy*=1.04;}
+        /* 速度過高+攻擊力高 → 飛出危險 */
+        if(spd>7&&b.stats.atk>6){
+          if(Math.random()<0.06){
+            const dir=Math.atan2(b.vy,b.vx);
+            battleState.effects.push({type:'out',x:b.x,y:b.y,dir:dir,t:battleState.tick});
+            b.stamina-=35;
+            addBattleLog('⚡ 加速帶過載！衝力過強，險些飛出！','log-special');
+          }
+        }
+      }
+    });
+    b.onAccel=onAccel;
+  }
+  if(p1.alive) checkAccelZone(p1);
+  if(p2.alive) checkAccelZone(p2);
+
+  /* 速度限制 */
+  function clampSpeed(b){
+    const maxS=b.onAccel?8.5:(b.stats.mobility==='high'?5.5:b.stats.mobility==='mid'?4.2:2.8);
+    const spd=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+    if(spd>maxS){const r=maxS/spd;b.vx*=r;b.vy*=r;}
+    b.vx*=0.988;b.vy*=0.988;
+  }
+  if(p1.alive) clampSpeed(p1);
+  if(p2.alive) clampSpeed(p2);
+
+  /* 移動 */
+  if(p1.alive){p1.x+=p1.vx;p1.y+=p1.vy;}
+  if(p2.alive){p2.x+=p2.vx;p2.y+=p2.vy;}
+
+  /* 邊界碰撞 */
+  function wallBounce(b){
+    const dx=b.x-ARENA_CX;const dy=b.y-ARENA_CY;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    const bR=getBeyRadius(b.ratchetKey);
+    if(d>ARENA_R-bR){
+      const nx=dx/d;const ny=dy/d;
+      const dot=b.vx*nx+b.vy*ny;
+      b.vx-=2.1*dot*nx;b.vy-=2.1*dot*ny;
+      b.x=ARENA_CX+nx*(ARENA_R-bR-1);b.y=ARENA_CY+ny*(ARENA_R-bR-1);
+      b.stamina-=1.5+(Math.abs(dot)*0.5);
+    }
+  }
+  if(p1.alive) wallBounce(p1);
+  if(p2.alive) wallBounce(p2);
+
+  /* 陀螺間碰撞 */
+  if(p1.alive&&p2.alive){
+    const dx=p2.x-p1.x;const dy=p2.y-p1.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const minDist=(getBeyRadius(p1.ratchetKey)+getBeyRadius(p2.ratchetKey))*0.92;
+    if(dist<minDist&&battleState.tick-battleState.lastCollide>8){
+      battleState.lastCollide=battleState.tick;
+      handleBeyCollision(dx,dy,dist,minDist);
+    }
+  }
+
+  /* 效果冷卻 */
+  Object.keys(p1.effects).forEach(k=>{if(p1.effects[k]>0)p1.effects[k]--;else delete p1.effects[k];});
+  Object.keys(p2.effects).forEach(k=>{if(p2.effects[k]>0)p2.effects[k]--;else delete p2.effects[k];});
+  if(battleState.skillCd>0) battleState.skillCd--;
+  if(battleState.oppSkillCd>0) battleState.oppSkillCd--;
+
+  /* 燃燒持續傷害 */
+  if(p1.effects.burn) p1.stamina-=0.17;
+  if(p1.effects.burn2) p1.stamina-=0.30;
+  if(p2.effects.burn) p2.stamina-=0.17;
+  if(p2.effects.burn2) p2.stamina-=0.30;
+
+  /* 耐久自然消耗 */
+  const e1=p1.stats.end*(p1.effects.heavy?1.6:1);
+  const e2=p2.stats.end*(p2.effects.heavy?1.6:1);
+  if(p1.alive) p1.stamina-=0.05/(e1*0.09+0.28);
+  if(p2.alive) p2.stamina-=0.05/(e2*0.09+0.28);
+
+  /* 轉停判斷 */
+  if(p1.alive&&p1.stamina<=0){
+    p1.alive=false;p1.stamina=0;
+    battleState.effects.push({type:'stop',x:p1.x,y:p1.y,t:battleState.tick,color:'#58a6ff'});
+  }
+  if(p2.alive&&p2.stamina<=0){
+    p2.alive=false;p2.stamina=0;
+    battleState.effects.push({type:'stop',x:p2.x,y:p2.y,t:battleState.tick,color:'#f85149'});
+  }
+
+  /* 旋轉角度 */
+  const atkBoost1=p1.effects.boost_atk||p1.effects.all_boost?1.4:1;
+  const atkBoost2=p2.effects.boost_atk||p2.effects.all_boost?1.4:1;
+  p1.angle+=(p1.spinSpeed*atkBoost1);
+  p2.angle+=(p2.spinSpeed*atkBoost2);
+
+  /* 更新UI */
+  updateBattleHPBars();
+  updateSkillCdUI();
+}
+
+function handleBeyCollision(dx,dy,dist,minDist){
+  const p1=battleState.p1;const p2=battleState.p2;
+  const nx=dx/dist;const ny=dy/dist;
+  const cx=(p1.x+p2.x)/2;const cy=(p1.y+p2.y)/2;
+
+  /* 分離，不讓兩者重疊 */
+  const overlap=(minDist-dist)/2+2;
+    p1.x-=nx*overlap*1.2;p1.y-=ny*overlap*1.2;
+    p2.x+=nx*overlap*1.2;p2.y+=ny*overlap*1.2;
+
+  /* 反向旋轉碰撞威力加倍 */
+  const spinFactor=(p1.spin!==p2.spin)?2.0:1.0;
+
+  /* 重量影響 */
+  const w1=p1.weight;const w2=p2.weight;
+  const totalW=w1+w2;
+  const wR1=w2/totalW;const wR2=w1/totalW;
+
+  /* 加速帶上碰撞額外加成 */
+  const accelBonus=(p1.onAccel||p2.onAccel)?1.5:1.0;
+
+  /* 計算碰撞速度 */
+  const relVx=p1.vx-p2.vx;const relVy=p1.vy-p2.vy;
+  const relSpeed=relVx*nx+relVy*ny;
+  const restitution=0.75;
+
+  if(relSpeed<0){
+    const impulse=-(1+restitution)*relSpeed*spinFactor*accelBonus;
+    p1.vx+=(impulse*wR1)*nx;p1.vy+=(impulse*wR1)*ny;
+    p2.vx-=(impulse*wR2)*nx;p2.vy-=(impulse*wR2)*ny;
+  }
+
+  /* 傷害計算 */
+  const impact=Math.abs(relSpeed)*spinFactor*accelBonus;
+  const ns1=battleState.needleStacks;
+  const ns2=battleState.oppNeedleStacks;
+  const atkMul1=p1.stats.atk*(1+ns1*0.2)*(p1.effects.boost_atk?1.6:1)*(p1.effects.all_boost?1.35:1);
+  const atkMul2=p2.stats.atk*(1+ns2*0.2)*(p2.effects.boost_atk?1.6:1)*(p2.effects.all_boost?1.35:1);
+  const defMul1=p1.stats.def*(p1.effects.heavy?1.8:1)*(p1.effects.reflect?2.2:1);
+  const defMul2=p2.stats.def*(p2.effects.heavy?1.8:1)*(p2.effects.reflect?2.2:1);
+
+  const dmg1to2=Math.max(1,Math.round((atkMul1/defMul2)*impact*wR1*3));
+  const dmg2to1=Math.max(1,Math.round((atkMul2/defMul1)*impact*wR2*3));
+
+  /* 反彈效果 */
+  if(p1.effects.reflect){p2.stamina-=dmg1to2*1.5;addBattleLog(`🛡️ 鐵壁反彈！對手受到${Math.round(dmg1to2*1.5)}傷害！`,'log-def');}
+  else p2.stamina-=dmg1to2;
+  if(p2.effects.reflect){p1.stamina-=dmg2to1*1.5;addBattleLog(`🛡️ 對手反彈！玩家受到${Math.round(dmg2to1*1.5)}傷害！`,'log-def');}
+  else p1.stamina-=dmg2to1;
+
+  /* 高度差爆裂判斷 */
+  const heightDiff=Math.abs(p1.height-p2.height);
+  const burstBonus=heightDiff>=20?1.8:heightDiff>=10?1.2:1.0;
+
+  /* 爆裂/擊飛判定 */
+  const rand=Math.random();
+  const speed1=Math.sqrt(p1.vx**2+p1.vy**2);
+  const speed2=Math.sqrt(p2.vx**2+p2.vy**2);
+
+  /* 60系打80系爆裂加成 */
+  const p1BurstBonus=(p1.height===60&&p2.height===80)?burstBonus:1;
+  const p2BurstBonus=(p2.height===60&&p1.height===80)?burstBonus:1;
+
+  const flyChance2=Math.min(0.45,(0.03+atkMul1*0.02)*wR1*(p1.effects.fly_boost?1.8:1)/Math.max(1,w2/65))*accelBonus;
+  const burstChance2=Math.min(0.40,(0.025+atkMul1*0.018)*p1BurstBonus*(BITS[p1.bitKey]?.special==='burst'?1.4:1))*accelBonus;
+  const flyChance1=Math.min(0.45,(0.03+atkMul2*0.02)*wR2*(p2.effects.fly_boost?1.8:1)/Math.max(1,w1/65))*accelBonus;
+  const burstChance1=Math.min(0.40,(0.025+atkMul2*0.018)*p2BurstBonus*(BITS[p2.bitKey]?.special==='burst'?1.4:1))*accelBonus;
+
+  battleState.effects.push({type:'collision',x:cx,y:cy,t:battleState.tick});
+
+  let eventHappened=false;
+
+  if(!p2.effects.heavy&&rand<flyChance2+burstChance2){
+    if(rand<burstChance2){
+      battleState.effects.push({type:'burst',x:p2.x,y:p2.y,t:battleState.tick});
+      if(speed1>4&&Math.random()<0.35){
+        battleState.effects.push({type:'fly',x:cx,y:cy,dir:Math.atan2(p2.vy,p2.vx),t:battleState.tick});
+        addBattleLog(`⚡ 完全勝！爆裂+擊飛！`,'log-crit');
+        p2.stamina=0;p2.alive=false;
+      }else{
+        addBattleLog(`💥 爆裂！對手陀螺爆裂散開！(+2分)`,'log-crit');
+        p2.alive=false;
+      }
+    }else{
+      const dir=Math.atan2(p2.vy,p2.vx);
+      battleState.effects.push({type:'fly',x:cx,y:cy,dir:dir,t:battleState.tick});
+      addBattleLog(`🚀 擊飛！對手被撞出場地！(+2分)`,'log-crit');
+      p2.stamina-=45;if(p2.stamina<=0) p2.alive=false;
+    }
+    eventHappened=true;
+  }else if(!p1.effects.heavy&&rand>1-flyChance1-burstChance1){
+    if(rand>1-burstChance1){
+      battleState.effects.push({type:'burst',x:p1.x,y:p1.y,t:battleState.tick});
+      if(speed2>4&&Math.random()<0.35){
+        battleState.effects.push({type:'fly',x:cx,y:cy,dir:Math.atan2(p1.vy,p1.vx),t:battleState.tick});
+        addBattleLog(`⚡ 完全勝！玩家陀螺爆裂+擊飛！`,'log-atk');
+        p1.stamina=0;p1.alive=false;
+      }else{
+        addBattleLog(`💥 玩家陀螺爆裂！(對手+2分)`,'log-atk');
+        p1.alive=false;
+      }
+    }else{
+      const dir=Math.atan2(p1.vy,p1.vx);
+      battleState.effects.push({type:'fly',x:cx,y:cy,dir:dir,t:battleState.tick});
+      addBattleLog(`🚀 玩家被擊飛！(對手+2分)`,'log-atk');
+      p1.stamina-=45;if(p1.stamina<=0) p1.alive=false;
+    }
+    eventHappened=true;
+  }
+
+  if(!eventHappened){
+    if(spinFactor>1) addBattleLog(`🔄 反向碰撞！衝擊加倍！${dmg1to2}vs${dmg2to1}`,'log-special');
+    else addBattleLog(`⚡ 撞擊！${dmg1to2}vs${dmg2to1}傷害交換`,'log-def');
+  }
+}
+
+/* ==========================================
+   AI 邏輯
+   ========================================== */
+function updateAI(ai,player,tick){
+  if(!ai.alive||ai.effects.freeze) return;
+  const dx=player.x-ai.x;const dy=player.y-ai.y;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  const opp=OPPONENTS[gameData.currentOpponent];
+  const tier=opp.tier||1;
+  const aiSpd=ai.stats.mobility==='high'?0.38:ai.stats.mobility==='mid'?0.28:0.16;
+
+  /* 加速帶吸引AI */
+  let targetX=player.x;let targetY=player.y;
+  if(Math.random()<0.15*tier){
+    const zone=ACCEL_ZONES[Math.floor(Math.random()*ACCEL_ZONES.length)];
+    const zdx=zone.cx-ai.x;const zdy=zone.cy-ai.y;
+    const zd=Math.sqrt(zdx*zdx+zdy*zdy);
+    if(zd>60){targetX=zone.cx;targetY=zone.cy;}
+  }
+
+  /* 依階段調整AI行為 */
+  if(tier>=3&&dist<120&&Math.random()<0.02*tier){
+    battleState.effects.push({type:'ai_skill',x:ai.x,y:ai.y,t:tick});
+    useOppSkill();
+  }
+
+  if(ai.effects.confuse){
+    ai.vx+=(Math.random()-0.5)*aiSpd*2;
+    ai.vy+=(Math.random()-0.5)*aiSpd*2;
+  }else{
+    const tdx=targetX-ai.x;const tdy=targetY-ai.y;
+    const td=Math.sqrt(tdx*tdx+tdy*tdy)||1;
+    ai.vx+=tdx/td*aiSpd*(0.8+tier*0.1);
+    ai.vy+=tdy/td*aiSpd*(0.8+tier*0.1);
+
+    /* 高tier AI會閃避靠近時 */
+    if(tier>=4&&dist<60&&Math.random()<0.3){
+      ai.vx-=dx/dist*aiSpd*1.5;
+      ai.vy-=dy/dist*aiSpd*1.5;
+    }
+  }
+}
+
+function useOppSkill(){
+  if(battleState.oppSkillCd>0) return;
+  const opp=OPPONENTS[gameData.currentOpponent];
+  const b2=BLADES[opp.blade];
+  if(!b2) return;
+  const skill=b2.skills[0];
+  battleState.oppSkillCd=skill.cd;
+  executeSkillEffect(skill.effect,battleState.p2,battleState.p1,false);
+  addBattleLog(`🤖 對手使用【${skill.name}】！`,'log-atk');
+}
+
+/* ==========================================
+   技能執行
+   ========================================== */
+function triggerSkill(){
+  if(battleState.skillCd>0||!battleState.roundActive) return;
+  const b1=BLADES[gameData.selectedBlade];
+  if(!b1) return;
+  const skill=b1.skills[0];
+  battleState.skillCd=skill.cd;
+  executeSkillEffect(skill.effect,battleState.p1,battleState.p2,true);
+  battleState.effects.push({type:'skill',x:battleState.p1.x,y:battleState.p1.y,t:battleState.tick,color:b1.color});
+  addBattleLog(`⚡ 玩家使用【${skill.name}】！`,'log-special');
+}
+
+function executeSkillEffect(effect,user,target,isPlayer){
+  const t=battleState.tick;
+  if(effect==='boost_atk'){user.effects.boost_atk=180;addBattleLog(`攻擊力大幅提升！`,'log-special');}
+  else if(effect==='area_slow'){target.effects.slow=130;target.vx*=0.35;target.vy*=0.35;addBattleLog(`區域震盪！對手減速！`,'log-def');}
+  else if(effect==='slow'){target.effects.slow=150;target.vx*=0.4;target.vy*=0.4;addBattleLog(`對手被減速40%！`,'log-def');}
+  else if(effect==='double_hit'){user.vx*=2.2;user.vy*=2.2;setTimeout(()=>{if(battleState.roundActive){user.vx*=-1.2;user.vy*=-1.2;}},280);addBattleLog(`二段衝擊發動！`,'log-special');}
+  else if(effect==='reflect'){user.effects.reflect=100;addBattleLog(`鐵壁防禦！反彈所有攻擊！`,'log-def');}
+  else if(effect==='mega_push'){
+    const dx=target.x-user.x;const dy=target.y-user.y;
+    const d=Math.sqrt(dx*dx+dy*dy)||1;
+    target.vx+=dx/d*14;target.vy+=dy/d*14;
+    target.stamina-=28;
+    battleState.effects.push({type:'burst',x:(user.x+target.x)/2,y:(user.y+target.y)/2,t:t});
+    addBattleLog(`正義制裁！超強擊飛！`,'log-crit');
+  }
+  else if(effect==='needle'){
+    if(isPlayer){battleState.needleStacks=Math.min(5,battleState.needleStacks+1);addBattleLog(`疊針！${battleState.needleStacks}層（傷害+${battleState.needleStacks*20}%）`,'log-special');}
+    else{battleState.oppNeedleStacks=Math.min(5,battleState.oppNeedleStacks+1);}
+  }
+  else if(effect==='needle_burst'){
+    const stacks=isPlayer?battleState.needleStacks:battleState.oppNeedleStacks;
+    if(stacks>=3){const dmg=stacks*18;target.stamina-=dmg;battleState.effects.push({type:'burst',x:target.x,y:target.y,t:t});addBattleLog(`致命劑量！${stacks}層針孔，${dmg}傷害！`,'log-crit');}
+    else addBattleLog(`針孔層數不足（需3層）！`,'log-sys');
+  }
+  else if(effect==='confuse'){target.effects.confuse=130;addBattleLog(`話術迷惑！對手方向混亂！`,'log-special');}
+  else if(effect==='weaken'){target.stats.atk=Math.max(1,target.stats.atk*0.65);addBattleLog(`合約鎖定！對手攻擊永久-35%！`,'log-special');}
+  else if(effect==='burn'){target.effects.burn=280;addBattleLog(`地溝油噴射！對手持續燃燒！`,'log-atk');}
+  else if(effect==='burn2'){target.effects.burn2=280;target.effects.burn=0;addBattleLog(`超辣地獄鍋！猛烈燃燒！`,'log-crit');}
+  else if(effect==='heal'){user.stamina=Math.min(user.maxStamina,user.stamina+35);addBattleLog(`回復35點耐久！`,'log-def');}
+  else if(effect==='fly_boost'){user.effects.fly_boost=130;user.vx*=1.9;user.vy*=1.9;addBattleLog(`托盤重擊！衝撞力大增！`,'log-atk');}
+  else if(effect==='all_boost'){user.effects.all_boost=250;addBattleLog(`24小時值班！全面覺醒！`,'log-special');}
+  else if(effect==='all_debuff'){target.effects.confuse=130;target.effects.burn=200;target.vx*=0.45;target.vy*=0.45;addBattleLog(`處理所有事！混亂燃燒減速！`,'log-crit');}
+  else if(effect==='freeze'){target.effects.freeze=110;target.vx=0;target.vy=0;addBattleLog(`緊急命令！對手完全停止！`,'log-special');}
+  else if(effect==='heavy'){user.effects.heavy=320;addBattleLog(`囤貨加重！被擊飛機率-70%！`,'log-def');}
+  else if(effect==='random'){
+    const r=Math.random();
+    if(r<0.33){target.stamina-=45;battleState.effects.push({type:'burst',x:target.x,y:target.y,t:t});addBattleLog(`黑市暴賺！對手-45耐久！`,'log-crit');}
+    else if(r<0.66){user.stamina-=25;addBattleLog(`黑市翻車！自己-25耐久！`,'log-atk');}
+    else{target.vx*=3.2;target.vy*=3.2;addBattleLog(`黑市暴衝！對手失控！`,'log-special');}
+  }
+  else if(effect==='rage_boost'){const pct=user.stamina/user.maxStamina;const bonus=1+(1-pct)*1.2;user.stats.atk*=bonus;addBattleLog(`熬夜暴走！+${Math.round((bonus-1)*100)}%攻擊！`,'log-crit');}
+  else if(effect==='instant_kill'){target.stamina=0;target.alive=false;addBattleLog(`改稿999！對手直接消失！`,'log-crit');}
+  else if(effect==='instant_stop'){target.stamina=0;target.alive=false;addBattleLog(`甲方已讀！對手放棄抵抗！`,'log-crit');}
+  else if(effect==='low_hp_burst'){
+    if(user.stamina/user.maxStamina<=0.3){target.stamina=0;target.alive=false;battleState.effects.push({type:'burst',x:target.x,y:target.y,t:t});addBattleLog(`幫幫我！瀕死反殺！`,'log-crit');}
+    else addBattleLog(`耐久需低於30%才能用！`,'log-sys');
+  }
+  else if(effect==='kamikaze'){user.stamina=0;target.stamina=0;user.alive=false;target.alive=false;battleState.effects.push({type:'burst',x:user.x,y:user.y,t:t});battleState.effects.push({type:'burst',x:target.x,y:target.y,t:t});addBattleLog(`886同歸於盡！`,'log-crit');}
+}
+
+/* ==========================================
+   渲染
+   ========================================== */
+function renderBattleFrame(ctx){
+  const W=ARENA_W,H=ARENA_H,CX=ARENA_CX,CY=ARENA_CY,R=ARENA_R;
+  ctx.clearRect(0,0,W,H);
+
+  /* 背景 */
+  ctx.fillStyle='#080c14';ctx.fillRect(0,0,W,H);
+
+  /* 場地底圓 */
+  const groundGrad=ctx.createRadialGradient(CX,CY,0,CX,CY,R);
+  groundGrad.addColorStop(0,'#161b2e');
+  groundGrad.addColorStop(0.35,'#111827');
+  groundGrad.addColorStop(0.7,'#0d1117');
+  groundGrad.addColorStop(1,'#080c14');
+  ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);
+  ctx.fillStyle=groundGrad;ctx.fill();
+
+  /* 高台視覺（中心區域） */
+  const plateGrad=ctx.createRadialGradient(CX,CY,0,CX,CY,R*0.38);
+  plateGrad.addColorStop(0,'#1e2a45');
+  plateGrad.addColorStop(0.6,'#16213e');
+  plateGrad.addColorStop(1,'rgba(22,33,62,0)');
+  ctx.beginPath();ctx.arc(CX,CY,R*0.38,0,Math.PI*2);
+  ctx.fillStyle=plateGrad;ctx.fill();
+
+  /* 高台邊緣高光 */
+  ctx.beginPath();ctx.arc(CX,CY,R*0.38,0,Math.PI*2);
+  ctx.strokeStyle='rgba(88,166,255,0.25)';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(CX,CY,R*0.36,0,Math.PI*2);
+  ctx.strokeStyle='rgba(88,166,255,0.1)';ctx.lineWidth=1;ctx.stroke();
+
+  /* 放射格線 */
+  for(let i=0;i<12;i++){
+    const a=i*Math.PI/6;
+    ctx.beginPath();ctx.moveTo(CX,CY);
+    ctx.lineTo(CX+Math.cos(a)*R,CY+Math.sin(a)*R);
+    ctx.strokeStyle='rgba(30,42,70,0.5)';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  for(let i=1;i<=3;i++){
+    ctx.beginPath();ctx.arc(CX,CY,R*i/3,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(30,42,70,${0.6-i*0.1})`;ctx.lineWidth=0.5;ctx.stroke();
+  }
+
+  /* 加速帶 */
+  ACCEL_ZONES.forEach((z,zi)=>{
+    const pulse=0.5+0.5*Math.sin(battleState.tick*0.08+zi*Math.PI);
+    const aGrad=ctx.createRadialGradient(z.cx,z.cy,0,z.cx,z.cy,z.r);
+    aGrad.addColorStop(0,`rgba(210,153,34,${0.35+pulse*0.2})`);
+    aGrad.addColorStop(0.5,`rgba(210,153,34,${0.15+pulse*0.1})`);
+    aGrad.addColorStop(1,'rgba(210,153,34,0)');
+    ctx.beginPath();ctx.arc(z.cx,z.cy,z.r,0,Math.PI*2);
+    ctx.fillStyle=aGrad;ctx.fill();
+    ctx.beginPath();ctx.arc(z.cx,z.cy,z.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(210,153,34,${0.5+pulse*0.3})`;ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle=`rgba(255,200,50,${0.6+pulse*0.3})`;
+    ctx.font='bold 9px sans-serif';ctx.textAlign='center';
+    ctx.fillText('⚡加速',z.cx,z.cy+3);
+  });
+
+  /* 場地外框 */
+  ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);
+  ctx.strokeStyle='#21262d';ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.arc(CX,CY,R-1,0,Math.PI*2);
+  ctx.strokeStyle='rgba(30,42,70,0.8)';ctx.lineWidth=1;ctx.stroke();
+
+  /* 特效渲染 */
+  battleState.effects=battleState.effects.filter(e=>{
+    const age=battleState.tick-e.t;if(age>55) return false;
+    const alpha=Math.max(0,1-age/55);
+    ctx.save();
+    if(e.type==='collision'){
+      for(let i=0;i<10;i++){
+        const a=i*Math.PI/5+age*0.12;const r=age*3.5;
+        ctx.beginPath();ctx.arc(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r,2.5,0,Math.PI*2);
+        ctx.fillStyle=`rgba(255,220,60,${alpha})`;ctx.fill();
+      }
+    }else if(e.type==='burst'){
+      for(let i=0;i<16;i++){
+        const a=i*Math.PI/8;const r=age*4.5;
+        ctx.beginPath();ctx.moveTo(e.x,e.y);
+        ctx.lineTo(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r);
+        ctx.strokeStyle=`rgba(248,81,73,${alpha})`;ctx.lineWidth=2;ctx.stroke();
+      }
+      ctx.beginPath();ctx.arc(e.x,e.y,age*2.5,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,150,0,${alpha})`;ctx.lineWidth=2;ctx.stroke();
+    }else if(e.type==='fly'){
+      const fx=e.x+Math.cos(e.dir)*age*6.5;const fy=e.y+Math.sin(e.dir)*age*6.5;
+      ctx.beginPath();ctx.arc(fx,fy,Math.max(1,10-age*0.15),0,Math.PI*2);
+      ctx.fillStyle=`rgba(88,166,255,${alpha})`;ctx.fill();
+      for(let tr=1;tr<=5;tr++){
+        const tx=e.x+Math.cos(e.dir)*(age-tr*3.5)*6.5;
+        const ty=e.y+Math.sin(e.dir)*(age-tr*3.5)*6.5;
+        if(age-tr*3.5>0){
+          ctx.beginPath();ctx.arc(tx,ty,4,0,Math.PI*2);
+          ctx.fillStyle=`rgba(88,166,255,${alpha*0.35})`;ctx.fill();
+        }
+      }
+    }else if(e.type==='stop'){
+      for(let i=0;i<8;i++){
+        const a=i*Math.PI/4;const r=age*2.2;
+        ctx.beginPath();ctx.arc(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r,Math.max(1,5-age*0.08),0,Math.PI*2);
+        ctx.fillStyle=`rgba(86,211,100,${alpha})`;ctx.fill();
+      }
+    }else if(e.type==='skill'){
+      ctx.beginPath();ctx.arc(e.x,e.y,age*3.5,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(${hexToRgbStr(e.color||'#d29922')},${alpha})`;ctx.lineWidth=2.5;ctx.stroke();
+    }else if(e.type==='out'){
+      ctx.beginPath();ctx.arc(e.x,e.y,age*2,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(210,153,34,${alpha})`;ctx.lineWidth=3;ctx.stroke();
+    }
+    ctx.restore();
+    return true;
+  });
+
+  /* 燃燒特效 */
+  if(battleState.p2.alive&&(battleState.p2.effects.burn||battleState.p2.effects.burn2)){
+    if(battleState.tick%4===0){
+      battleState.effects.push({type:'burn_fx',x:battleState.p2.x+(Math.random()-0.5)*16,y:battleState.p2.y+(Math.random()-0.5)*16,t:battleState.tick});
+    }
+  }
+  if(battleState.p1.alive&&(battleState.p1.effects.burn||battleState.p1.effects.burn2)){
+    if(battleState.tick%4===0){
+      battleState.effects.push({type:'burn_fx',x:battleState.p1.x+(Math.random()-0.5)*16,y:battleState.p1.y+(Math.random()-0.5)*16,t:battleState.tick});
+    }
+  }
+
+  /* 繪製陀螺 */
+  if(battleState.p1.alive) drawBeyInBattle(ctx,battleState.p1);
+  if(battleState.p2.alive) drawBeyInBattle(ctx,battleState.p2);
+
+  /* 耐久條 */
+  [battleState.p1,battleState.p2].forEach(b=>{
+    if(!b.alive) return;
+    const pct=Math.max(0,b.stamina/b.maxStamina);
+    const bx=b.x-24;const by=b.y-getBeyRadius(b.ratchetKey)-14;
+    ctx.fillStyle='#161b22';ctx.fillRect(bx,by,48,6);
+    ctx.fillStyle=pct>0.5?'#56d364':pct>0.25?'#d29922':'#f85149';
+    ctx.fillRect(bx,by,48*pct,6);
+    ctx.strokeStyle='#21262d';ctx.lineWidth=0.5;ctx.strokeRect(bx,by,48,6);
+    ctx.fillStyle='rgba(230,237,243,0.7)';
+    ctx.font='8px sans-serif';ctx.textAlign='center';
+    ctx.fillText(Math.round(b.stamina),b.x,by-1);
+  });
+}
+
+function drawBeyInBattle(ctx,b){
+  const opts={glow:b.onAccel||(b.effects.boost_atk>0)||(b.effects.all_boost>0)};
+  drawBeyOnCanvas(ctx,b.x,b.y,b.bladeKey,b.ratchetKey,b.bitKey,b.angle*Math.PI/180,getBeyRadius(b.ratchetKey),opts);
+
+  /* 狀態光環 */
+  const rad=getBeyRadius(b.ratchetKey);
+  if(b.effects.reflect){
+    ctx.beginPath();ctx.arc(b.x,b.y,rad+8,0,Math.PI*2);
+    ctx.strokeStyle='rgba(121,192,255,0.8)';ctx.lineWidth=3;ctx.stroke();
+  }
+  if(b.effects.freeze){
+    ctx.beginPath();ctx.arc(b.x,b.y,rad+6,0,Math.PI*2);
+    ctx.strokeStyle='rgba(121,192,255,0.6)';ctx.lineWidth=4;ctx.stroke();
+  }
+  if(b.effects.heavy){
+    ctx.beginPath();ctx.arc(b.x,b.y,rad+5,0,Math.PI*2);
+    ctx.strokeStyle='rgba(240,136,62,0.7)';ctx.lineWidth=3;ctx.stroke();
+  }
+  if(b.effects.burn||b.effects.burn2){
+    const pulse=0.5+0.5*Math.sin(battleState.tick*0.2);
+    ctx.beginPath();ctx.arc(b.x,b.y,rad+4,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(240,136,62,${0.4+pulse*0.4})`;ctx.lineWidth=2;ctx.stroke();
+  }
+}
+
+function drawArenaStatic(){
+  const canvas=document.getElementById('battle-canvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const CX=ARENA_CX,CY=ARENA_CY,R=ARENA_R;
+  ctx.clearRect(0,0,ARENA_W,ARENA_H);
+  ctx.fillStyle='#080c14';ctx.fillRect(0,0,ARENA_W,ARENA_H);
+  ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);
+  ctx.fillStyle='#0d1117';ctx.fill();
+  ctx.strokeStyle='#21262d';ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.arc(CX,CY,R*0.38,0,Math.PI*2);
+  ctx.strokeStyle='rgba(88,166,255,0.2)';ctx.lineWidth=2;ctx.stroke();
+  ACCEL_ZONES.forEach(z=>{
+    ctx.beginPath();ctx.arc(z.cx,z.cy,z.r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(210,153,34,0.4)';ctx.lineWidth=1.5;ctx.stroke();
+  });
+  ctx.fillStyle='#30363d';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('按右下「發射」開始',CX,CY);
+}
+
+/* ==========================================
+   回合結算
+   ========================================== */
+function endRound(){
+  cancelAnimationFrame(battleState.animFrame);
+  battleState.roundActive=false;
+  const p1=battleState.p1;const p2=battleState.p2;
+  let winner=0;let endType='stop';
+
+  if(!p1.alive&&!p2.alive){
+    addBattleLog('雙方同時停止！平局！','log-sys');
+    endType='draw';
+  }else if(!p1.alive){
+    winner=2;
+    const hasBurst=battleState.effects.some(e=>e.type==='burst'&&Math.abs(e.x-p1.x)<60);
+    const hasFly=battleState.effects.some(e=>e.type==='fly');
+    if(hasBurst&&hasFly) endType='extreme';
+    else if(hasBurst) endType='burst';
+    else if(hasFly) endType='fly';
+    else endType='stop';
+  }else if(!p2.alive){
+    winner=1;
+    const hasBurst=battleState.effects.some(e=>e.type==='burst'&&Math.abs(e.x-p2.x)<60);
+    const hasFly=battleState.effects.some(e=>e.type==='fly');
+    if(hasBurst&&hasFly) endType='extreme';
+    else if(hasBurst) endType='burst';
+    else if(hasFly) endType='fly';
+    else endType='stop';
+  }else{
+    winner=p1.stamina>p2.stamina?1:2;
+    endType='stop';
+  }
+
+  const scoreMap={stop:1,burst:2,fly:2,extreme:3,draw:0};
+  const pts=scoreMap[endType]||1;
+  const endLabels={stop:'🌀 轉停勝',burst:'💥 爆裂勝',fly:'🚀 擊飛勝',extreme:'⚡ 完全勝',draw:'平局'};
+
+  if(winner===1){
+    battleState.p1Score+=pts;
+    addBattleLog(`🏆 玩家獲勝！${endLabels[endType]} +${pts}分 ${battleState.p1Score}:${battleState.p2Score}`,'log-crit');
+  }else if(winner===2){
+    battleState.p2Score+=pts;
+    addBattleLog(`❌ 對手獲勝！${endLabels[endType]} +${pts}分 ${battleState.p1Score}:${battleState.p2Score}`,'log-atk');
+  }
+
+  document.getElementById('b-p1-score').textContent=battleState.p1Score;
+  document.getElementById('b-p2-score').textContent=battleState.p2Score;
+
+  if(battleState.p1Score>=4||battleState.p2Score>=4){
+    setTimeout(()=>showBattleResult(),1200);
+  }else{
+    setTimeout(()=>{
+      document.getElementById('launch-circle-btn').disabled=false;
+      drawArenaStatic();
+    },1500);
+  }
+}
+
+function showBattleResult(){
+  cancelAnimationFrame(battleState.animFrame);
+  battleState.running=false;
+  cleanupControls();
+  const oppIdx=gameData.currentOpponent;
+  const opp=OPPONENTS[oppIdx];
+  const playerWon=battleState.p1Score>=4;
+
+  const coins=playerWon?opp.reward.win:opp.reward.lose;
+  gameData.coins+=coins;
+  if(playerWon) gameData.completedOpponents.add(oppIdx);
+  saveGame();
+  updateAllCoins();
+
+  const hero=document.getElementById('result-hero');
+  const title=document.getElementById('result-title');
+  const coinEl=document.getElementById('result-coin');
+  const sub=document.getElementById('result-sub');
+
+  if(playerWon){
+    hero.style.background='#0a1a2d';
+    title.style.color='#58a6ff';
+    title.textContent='勝利！';
+  }else{
+    hero.style.background='#1f0a0a';
+    title.style.color='#f85149';
+    title.textContent='失敗...';
+  }
+  coinEl.textContent=`🪙 ${playerWon?'+':'+'} ${coins} 金幣`;
+  sub.textContent=`比分 ${battleState.p1Score} : ${battleState.p2Score}　累計金幣：${gameData.coins}`;
+
+  showScreen('screen-result');
+}
+
+/* ==========================================
+   鍵盤控制
+   ========================================== */
+function setupKeyboard(){
+  document.addEventListener('keydown',onKeyDown);
+  document.addEventListener('keyup',onKeyUp);
+}
+
+function cleanupControls(){
+  document.removeEventListener('keydown',onKeyDown);
+  document.removeEventListener('keyup',onKeyUp);
+}
+
+function onKeyDown(e){
+  battleState.keys[e.code]=true;
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  if(e.code==='Space') triggerSkill();
+  if(e.code==='Enter') triggerLaunch();
+}
+
+function onKeyUp(e){battleState.keys[e.code]=false;}
+
+/* ==========================================
+   類比搖桿
+   ========================================== */
+function setupJoystick(){
+  const zone=document.getElementById('joystick-zone');
+  const knob=document.getElementById('joy-knob');
+  if(!zone||!knob) return;
+  const base=document.getElementById('joy-base');
+  const baseR=45;
+
+  function getCenter(){
+    const rect=base.getBoundingClientRect();
+    return{x:rect.left+rect.width/2,y:rect.top+rect.height/2};
+  }
+
+  function moveKnob(clientX,clientY){
+    const c=getCenter();
+    let dx=clientX-c.x;let dy=clientY-c.y;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    const clampR=Math.min(d,baseR);
+    const angle=Math.atan2(dy,dx);
+    const kx=Math.cos(angle)*clampR;const ky=Math.sin(angle)*clampR;
+    knob.style.transform=`translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+    battleState.joystick.x=kx/baseR;
+    battleState.joystick.y=ky/baseR;
+  }
+
+  function resetKnob(){
+    knob.style.transform='translate(-50%,-50%)';
+    battleState.joystick.x=0;battleState.joystick.y=0;
+    battleState.joystick.active=false;
+  }
+
+  zone.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    battleState.joystick.active=true;
+    moveKnob(e.touches[0].clientX,e.touches[0].clientY);
+  },{passive:false});
+  zone.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(battleState.joystick.active) moveKnob(e.touches[0].clientX,e.touches[0].clientY);
+  },{passive:false});
+  zone.addEventListener('touchend',e=>{e.preventDefault();resetKnob();},{passive:false});
+  zone.addEventListener('mousedown',e=>{battleState.joystick.active=true;moveKnob(e.clientX,e.clientY);});
+  document.addEventListener('mousemove',e=>{if(battleState.joystick.active) moveKnob(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',()=>resetKnob());
+}
+
+/* ==========================================
+   UI 更新
+   ========================================== */
+function updateBattleHPBars(){
+  const p1=battleState.p1;const p2=battleState.p2;
+  const pct1=p1.maxStamina>0?Math.max(0,p1.stamina/p1.maxStamina):0;
+  const pct2=p2.maxStamina>0?Math.max(0,p2.stamina/p2.maxStamina):0;
+  const hp1=document.getElementById('b-p1-hp');
+  const hp2=document.getElementById('b-p2-hp');
+  if(hp1) hp1.style.width=Math.round(pct1*100)+'%';
+  if(hp2) hp2.style.width=Math.round(pct2*100)+'%';
+  const t1=document.getElementById('b-p1-hp-text');
+  const t2=document.getElementById('b-p2-hp-text');
+  if(t1) t1.textContent=Math.round(Math.max(0,p1.stamina));
+  if(t2) t2.textContent=Math.round(Math.max(0,p2.stamina));
+}
+
+function updateSkillCdUI(){
+  const cd=battleState.skillCd;
+  const cdEl=document.getElementById('skill-circle-cd');
+  const btn=document.getElementById('skill-circle-btn');
+  if(cdEl) cdEl.textContent=cd>0?`${Math.ceil(cd/60)}s`:'可用';
+  if(btn) btn.classList.toggle('disabled',cd>0);
+}
+
+function addBattleLog(msg,cls=''){
+  const log=document.getElementById('battle-log');
+  if(!log) return;
+  const d=document.createElement('div');
+  d.className='log-l '+(cls||'');
+  d.textContent=msg;
+  log.appendChild(d);
+  log.scrollTop=log.scrollHeight;
+}
+
+function hexToRgbStr(hex){
+  try{
+    const r=parseInt(hex.slice(1,3),16);
+    const g=parseInt(hex.slice(3,5),16);
+    const b=parseInt(hex.slice(5,7),16);
+    return `${r},${g},${b}`;
+  }catch{return '210,153,34';}
+}
+</script>
 
 </body>
 </html>
