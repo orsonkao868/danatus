@@ -1500,8 +1500,8 @@ function updateBattlePhysics(){
   /* 耐久自然消耗 */
   const e1=p1.stats.end*(p1.effects.heavy?1.6:1);
   const e2=p2.stats.end*(p2.effects.heavy?1.6:1);
-  if(p1.alive) p1.stamina-=0.05/(e1*0.09+0.28);
-  if(p2.alive) p2.stamina-=0.05/(e2*0.09+0.28);
+  if(p1.alive) p1.stamina-=0.01/(e1*0.09+0.28);
+  if(p2.alive) p2.stamina-=0.01/(e2*0.09+0.28);
 
   /* 轉停判斷 */
   if(p1.alive&&p1.stamina<=0){
@@ -1611,7 +1611,7 @@ function handleBeyCollision(dx,dy,dist,minDist){
       const dir=Math.atan2(p2.vy,p2.vx);
       battleState.effects.push({type:'fly',x:cx,y:cy,dir:dir,t:battleState.tick});
       addBattleLog(`🚀 擊飛！對手被撞出場地！(+2分)`,'log-crit');
-      p2.stamina-=45;if(p2.stamina<=0) p2.alive=false;
+      p2.stamina-=5;if(p2.stamina<=0) p2.alive=false;
     }
     eventHappened=true;
   }else if(!p1.effects.heavy&&rand>1-flyChance1-burstChance1){
@@ -1629,7 +1629,7 @@ function handleBeyCollision(dx,dy,dist,minDist){
       const dir=Math.atan2(p1.vy,p1.vx);
       battleState.effects.push({type:'fly',x:cx,y:cy,dir:dir,t:battleState.tick});
       addBattleLog(`🚀 玩家被擊飛！(對手+2分)`,'log-atk');
-      p1.stamina-=45;if(p1.stamina<=0) p1.alive=false;
+      p1.stamina-=5;if(p1.stamina<=0) p1.alive=false;
     }
     eventHappened=true;
   }
