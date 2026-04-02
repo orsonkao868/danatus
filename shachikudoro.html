@@ -1565,8 +1565,8 @@ function handleBeyCollision(dx,dy,dist,minDist){
   const defMul1=p1.stats.def*(p1.effects.heavy?1.8:1)*(p1.effects.reflect?2.2:1);
   const defMul2=p2.stats.def*(p2.effects.heavy?1.8:1)*(p2.effects.reflect?2.2:1);
 
-  const dmg1to2=Math.max(1,Math.round((atkMul1/defMul2)*impact*wR1*0.5));
-  const dmg2to1=Math.max(1,Math.round((atkMul2/defMul1)*impact*wR2*0.5));
+  const dmg1to2=Math.max(1,Math.round((atkMul1/defMul2)*impact*wR1*0.1));
+  const dmg2to1=Math.max(1,Math.round((atkMul2/defMul1)*impact*wR2*0.1));
 
   /* 反彈效果 */
   if(p1.effects.reflect){p2.stamina-=dmg1to2*1.5;addBattleLog(`🛡️ 鐵壁反彈！對手受到${Math.round(dmg1to2*1.5)}傷害！`,'log-def');}
@@ -1587,10 +1587,10 @@ function handleBeyCollision(dx,dy,dist,minDist){
   const p1BurstBonus=(p1.height===60&&p2.height===80)?burstBonus:1;
   const p2BurstBonus=(p2.height===60&&p1.height===80)?burstBonus:1;
 
-  const flyChance2=Math.min(0.20,(0.03+atkMul1*0.02)*wR1*(p1.effects.fly_boost?1.8:1)/Math.max(1,w2/65))*accelBonus;
-  const burstChance2=Math.min(0.15,(0.025+atkMul1*0.018)*p1BurstBonus*(BITS[p1.bitKey]?.special==='burst'?1.4:1))*accelBonus;
-  const flyChance1=Math.min(0.20,(0.03+atkMul2*0.02)*wR2*(p2.effects.fly_boost?1.8:1)/Math.max(1,w1/65))*accelBonus;
-  const burstChance1=Math.min(0.15,(0.025+atkMul2*0.018)*p2BurstBonus*(BITS[p2.bitKey]?.special==='burst'?1.4:1))*accelBonus;
+  const flyChance2=Math.min(0.05,(0.03+atkMul1*0.02)*wR1*(p1.effects.fly_boost?1.8:1)/Math.max(1,w2/65))*accelBonus;
+  const burstChance2=Math.min(0.10,(0.025+atkMul1*0.018)*p1BurstBonus*(BITS[p1.bitKey]?.special==='burst'?1.4:1))*accelBonus;
+  const flyChance1=Math.min(0.05,(0.03+atkMul2*0.02)*wR2*(p2.effects.fly_boost?1.8:1)/Math.max(1,w1/65))*accelBonus;
+  const burstChance1=Math.min(0.10,(0.025+atkMul2*0.018)*p2BurstBonus*(BITS[p2.bitKey]?.special==='burst'?1.4:1))*accelBonus;
 
   battleState.effects.push({type:'collision',x:cx,y:cy,t:battleState.tick});
 
